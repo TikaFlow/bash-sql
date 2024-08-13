@@ -4,7 +4,7 @@
 
 #include "getopt_util.h"
 
-void argError(const String &error) {
+void arg_error(const String &error) {
     show_error(error + "\nUse -h for help.");
 }
 
@@ -55,7 +55,7 @@ void show_help() {
             "  where col2 not like PID | select * order by start desc limit 10\"\n" << endl;
 }
 
-ProgramOptions parseCommandLine(int argc, char *argv[]) {
+ProgramOptions parse_cmd_options(int argc, char *argv[]) {
     ProgramOptions options = {false, false, "", "", '\0', 0, ""};
 
     var help = false;
@@ -104,7 +104,7 @@ ProgramOptions parseCommandLine(int argc, char *argv[]) {
             case 'f':
                 // check file exists
                 if (access(optarg, F_OK)) {
-                    argError("File not found: " + String(optarg));
+                    arg_error("File not found: " + String(optarg));
                 }
                 file = true;
                 options.file = optarg;
@@ -116,10 +116,10 @@ ProgramOptions parseCommandLine(int argc, char *argv[]) {
                 options.columns = stoi(optarg);
                 break;
             case '?':
-                argError("Unknown option.");
+                arg_error("Unknown option.");
                 break;
             default:
-                argError("Unknown error.");
+                arg_error("Unknown error.");
                 break;
         }
     }
@@ -136,12 +136,12 @@ ProgramOptions parseCommandLine(int argc, char *argv[]) {
     if (help || version) {
         if (options.title || !options.data.empty() || !options.file.empty() || options.delimiter != '\0' ||
             options.columns != 0 || !options.query.empty()) {
-            if (help) argError("Help option cannot be used with other options.");
-            if (version) argError("Version option cannot be used with other options.");
+            if (help) arg_error("Help option cannot be used with other options.");
+            if (version) arg_error("Version option cannot be used with other options.");
         }
     } else {
         if (data && file) {
-            argError("Only file or standard input should be specified.");
+            arg_error("Only file or standard input should be specified.");
         }
     }
 

@@ -24,8 +24,8 @@ struct ProgramOptions {
 };
 
 void show_version();
-void argError(const String &error);
-ProgramOptions parseCommandLine(int argc, char* argv[]);
+void arg_error(const String &error);
+ProgramOptions parse_cmd_options(int argc, char* argv[]);
 
 
 #endif //BASH_SQL_GETOPT_UTIL_H

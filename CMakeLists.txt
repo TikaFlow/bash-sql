@@ -19,6 +19,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # subdirectories
 add_subdirectory(util)
+add_subdirectory(parser)
 add_subdirectory(process)
 
 set(EXE_NAME sql)
@@ -26,7 +27,7 @@ set(EXE_NAME sql)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src SRCS)
 # add executable target
 add_executable(${EXE_NAME} ${SRCS})
-target_link_libraries(${EXE_NAME} util process)
+target_link_libraries(${EXE_NAME} util parser process)
 
 # install
 install(TARGETS ${EXE_NAME} DESTINATION bin)

@@ -8,6 +8,7 @@
 #include <iostream>
 #include <string>
 #include "getopt_util.h"
+#include "parser.h"
 #include "process.h"
 #include "data_out.h"
 

@@ -6,7 +6,10 @@
 
 int main(int argc, char *argv[]) {
     // parse command line options
-    val options = parseCommandLine(argc, argv);
+    val options = parse_cmd_options(argc, argv);
+
+    // get parsed sql ast
+    val sql = parse(options.query);
 
     // process data
     var data = process_data(options);
