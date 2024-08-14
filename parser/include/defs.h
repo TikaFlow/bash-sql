@@ -7,14 +7,13 @@
 
 typedef enum {
     T_EOF,
-    T_PLUS, T_MINUS, T_STAR, T_SLASH,
-    T_MOD, T_UNDERSCORE,
-    T_LPAREN, T_RPAREN,
+    T_PLUS, T_MINUS, T_STAR, T_SLASH, T_MOD,
+    T_LPAREN, T_RPAREN, T_COMMA, T_SEMICOLON,
     T_NUMBER, T_STRING, T_IDENTIFIER,
-    T_SELECT, T_FROM, T_WHERE, T_JOIN, T_ON, T_AS, T_OFFSET, T_LIMIT,
-    T_AND, T_OR, T_NOT,
-    T_COMMA,
-    T_SEMICOLON,
+    T_SELECT, T_AS, T_FROM, T_WHERE, T_JOIN, T_ON,
+    T_GROUP, T_BY, T_ORDER, T_HAVING, T_IN, T_OFFSET, T_LIMIT,
+    T_AND, T_OR, T_NOT, T_IS, T_NULL,
+    T_WHEN, T_THEN, T_ELSE, T_WITH,
 } TokenType;
 
 typedef enum {
@@ -29,7 +28,8 @@ typedef struct ASTNode ASTNode;
 
 struct Token {
     TokenType type;
-    char *text;
+    double number;
+    String *text;
 };
 
 struct ASTNode {

@@ -18,11 +18,14 @@
 // keyword
 #define var auto
 #define val const auto
+#define null nullptr
 
 // type
 using String = std::string;
 template<typename T>
 using Vector = std::vector<T>;
+template<typename K, typename V>
+using Map = std::map<K, V>;
 using Regex = std::regex;
 
 // function
@@ -41,7 +44,6 @@ using std::setfill;
 using std::cin;
 using std::cout;
 using std::cerr;
-val null = nullptr;
 val npos = String::npos;
 
 #endif //BASH_SQL_GLOBAL_H

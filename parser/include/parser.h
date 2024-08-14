@@ -5,13 +5,9 @@
 #ifndef BASH_SQL_PARSER_H
 #define BASH_SQL_PARSER_H
 
-#include "global.h"
+#include "util.h"
 #include "defs.h"
 
-static Token *lex(String sql);
-
-static ASTNode *parse(Token *token);
-
-ASTNode *parse(String sql);
+ASTNode *parse(const String* sql);
 
 #endif //BASH_SQL_PARSER_H
