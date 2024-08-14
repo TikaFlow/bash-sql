@@ -19,6 +19,12 @@ namespace util {
         return rtrim(ltrim(str));
     }
 
+    String to_lower(const String &str) {
+        String res;
+        std::transform(str.begin(), str.end(), std::back_inserter(res), ::tolower);
+        return res;
+    }
+
     Vector<String> split_string(const String &query, char delimiter) {
         Vector<String> res;
         size_t pos = 0;

@@ -5,62 +5,60 @@
 #include "lex.h"
 
 static int INDEX = 0;
-static const String *SQL;
-static Map<String, TokenType> *KEYWORD;
-static Map<TokenType, String> *DESC;
+static String SQL;
+static Map<String, TokenType> KEYWORD;
+static Map<TokenType, String> DESC;
 
 static void init_map() {
-    KEYWORD = new Map<String, TokenType>();
     using Keyword = std::pair<String, TokenType>;
-    KEYWORD->insert(Keyword("select", T_SELECT));
-    KEYWORD->insert(Keyword("as", T_AS));
-    KEYWORD->insert(Keyword("from", T_FROM));
-    KEYWORD->insert(Keyword("where", T_WHERE));
-    KEYWORD->insert(Keyword("join", T_JOIN));
-    KEYWORD->insert(Keyword("on", T_ON));
-    KEYWORD->insert(Keyword("group", T_GROUP));
-    KEYWORD->insert(Keyword("by", T_BY));
-    KEYWORD->insert(Keyword("order", T_ORDER));
-    KEYWORD->insert(Keyword("having", T_HAVING));
-    KEYWORD->insert(Keyword("in", T_IN));
-    KEYWORD->insert(Keyword("offset", T_OFFSET));
-    KEYWORD->insert(Keyword("limit", T_LIMIT));
-    KEYWORD->insert(Keyword("and", T_AND));
-    KEYWORD->insert(Keyword("or", T_OR));
-    KEYWORD->insert(Keyword("not", T_NOT));
-    KEYWORD->insert(Keyword("is", T_IS));
-    KEYWORD->insert(Keyword("null", T_NULL));
-    KEYWORD->insert(Keyword("when", T_WHEN));
-    KEYWORD->insert(Keyword("then", T_THEN));
-    KEYWORD->insert(Keyword("else", T_ELSE));
-    KEYWORD->insert(Keyword("with", T_WITH));
+    KEYWORD.insert(Keyword("select", T_SELECT));
+    KEYWORD.insert(Keyword("as", T_AS));
+    KEYWORD.insert(Keyword("from", T_FROM));
+    KEYWORD.insert(Keyword("where", T_WHERE));
+    KEYWORD.insert(Keyword("join", T_JOIN));
+    KEYWORD.insert(Keyword("on", T_ON));
+    KEYWORD.insert(Keyword("group", T_GROUP));
+    KEYWORD.insert(Keyword("by", T_BY));
+    KEYWORD.insert(Keyword("order", T_ORDER));
+    KEYWORD.insert(Keyword("having", T_HAVING));
+    KEYWORD.insert(Keyword("in", T_IN));
+    KEYWORD.insert(Keyword("offset", T_OFFSET));
+    KEYWORD.insert(Keyword("limit", T_LIMIT));
+    KEYWORD.insert(Keyword("and", T_AND));
+    KEYWORD.insert(Keyword("or", T_OR));
+    KEYWORD.insert(Keyword("not", T_NOT));
+    KEYWORD.insert(Keyword("is", T_IS));
+    KEYWORD.insert(Keyword("null", T_NULL));
+    KEYWORD.insert(Keyword("when", T_WHEN));
+    KEYWORD.insert(Keyword("then", T_THEN));
+    KEYWORD.insert(Keyword("else", T_ELSE));
+    KEYWORD.insert(Keyword("with", T_WITH));
 
-    DESC = new Map<TokenType, String>();
     using Description = std::pair<TokenType, String>;
-    DESC->insert(Description(T_EOF, "EOF"));
-    DESC->insert(Description(T_PLUS, "+"));
-    DESC->insert(Description(T_MINUS, "-"));
-    DESC->insert(Description(T_STAR, "*"));
-    DESC->insert(Description(T_SLASH, "/"));
-    DESC->insert(Description(T_MOD, "%"));
-    DESC->insert(Description(T_EQ, "="));
-    DESC->insert(Description(T_NE1, "<>"));
-    DESC->insert(Description(T_NE2, "!="));
-    DESC->insert(Description(T_LT, "<"));
-    DESC->insert(Description(T_GT, ">"));
-    DESC->insert(Description(T_LE, "<="));
-    DESC->insert(Description(T_GE, ">="));
-    DESC->insert(Description(T_LPAREN, "("));
-    DESC->insert(Description(T_RPAREN, ")"));
-    DESC->insert(Description(T_COMMA, ","));
-    DESC->insert(Description(T_SEMICOLON, ";"));
-    DESC->insert(Description(T_NUMBER, "number"));
+    DESC.insert(Description(T_EOF, "EOF"));
+    DESC.insert(Description(T_PLUS, "+"));
+    DESC.insert(Description(T_MINUS, "-"));
+    DESC.insert(Description(T_STAR, "*"));
+    DESC.insert(Description(T_SLASH, "/"));
+    DESC.insert(Description(T_MOD, "%"));
+    DESC.insert(Description(T_EQ, "="));
+    DESC.insert(Description(T_NE1, "<>"));
+    DESC.insert(Description(T_NE2, "!="));
+    DESC.insert(Description(T_LT, "<"));
+    DESC.insert(Description(T_GT, ">"));
+    DESC.insert(Description(T_LE, "<="));
+    DESC.insert(Description(T_GE, ">="));
+    DESC.insert(Description(T_LPAREN, "("));
+    DESC.insert(Description(T_RPAREN, ")"));
+    DESC.insert(Description(T_COMMA, ","));
+    DESC.insert(Description(T_SEMICOLON, ";"));
+    DESC.insert(Description(T_NUMBER, "number"));
 }
 
 static char next() {
-    static val len = SQL->length();
+    static val len = SQL.length();
     if (INDEX < len) {
-        return SQL->at(INDEX++);
+        return SQL.at(INDEX++);
     }
     return EOF;
 }
@@ -107,11 +105,11 @@ static Token *new_token() {
     val token = new Token();
     token->type = T_EOF;
     token->number = 0;
-    token->text = null;
+    token->text = "";
     return token;
 }
 
-static String *escape_string(String &str) {
+static String escape_string(String &str) {
     std::ostringstream oss;
     val len = str.length();
     size_t pos = 0;
@@ -156,21 +154,19 @@ static String *escape_string(String &str) {
         pos++;
     }
 
-    return new String(oss.str());
+    return oss.str();
 }
 
 static void check_keyword(Token *token) {
-    String text;
-
-    std::transform(token->text->begin(), token->text->end(), std::back_inserter(text), ::tolower);
-    if (KEYWORD->count(text) > 0) {
-        token->type = KEYWORD->at(text);
+    String text = to_lower(token->text);
+    if (KEYWORD.count(text) > 0) {
+        token->type = KEYWORD.at(text);
     }
 }
 
 static void describe(Token *token) {
-    if (DESC->count(token->type) > 0) {
-        token->text = new String(DESC->at(token->type));
+    if (DESC.count(token->type) > 0) {
+        token->text = DESC.at(token->type);
     }
 }
 
@@ -186,7 +182,7 @@ static void scan_string(Token *token, char quote) {
         show_error("unterminated string");
     } else {
         token->type = T_STRING;
-        String str = SQL->substr(start, INDEX - start - 1);
+        String str = SQL.substr(start, INDEX - start - 1);
         token->text = escape_string(str);
     }
 }
@@ -206,7 +202,7 @@ static void scan_number(Token *token) {
 
     token->type = T_NUMBER;
     prev(c);
-    String str = SQL->substr(start, INDEX - start);
+    String str = SQL.substr(start, INDEX - start);
     token->number = stod(str);
 }
 
@@ -217,8 +213,7 @@ static void scan_identifier(Token *token) {
 
     token->type = T_IDENTIFIER;
     prev(c);
-    String str = SQL->substr(start, INDEX - start);
-    token->text = new String(str);
+    token->text = SQL.substr(start, INDEX - start);
 
     check_keyword(token);
 }
@@ -305,11 +300,12 @@ static Token *scan() {
     return token;
 }
 
-Vector<Token *> *lex(const String *sql) {
+Vector<Token *> *lex(const String &sql) {
     SQL = sql;
-    Token *tk;
-    val tokens = new Vector<Token *>();
     init_map();
+
+    val tokens = new Vector<Token *>();
+    Token *tk;
 
     while ((tk = scan())) {
         tokens->push_back(tk);

@@ -8,6 +8,6 @@
 #include "util.h"
 #include "defs.h"
 
-Vector<Token *> *lex(const String *sql);
+Vector<Token *> *lex(const String &sql);
 
 #endif //BASH_SQL_LEX_H

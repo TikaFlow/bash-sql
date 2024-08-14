@@ -32,7 +32,7 @@ struct Token {
     double number; // for T_NUMBER
     // for T_STRING or T_IDENTIFIER, its name; for other, its description
     // so that text will never be NULL
-    String *text;
+    String text;
 };
 
 struct ASTNode {
