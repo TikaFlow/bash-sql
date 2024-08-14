@@ -8,6 +8,7 @@
 typedef enum {
     T_EOF,
     T_PLUS, T_MINUS, T_STAR, T_SLASH, T_MOD,
+    T_EQ, T_NE1, T_NE2, T_LT, T_GT, T_LE, T_GE,
     T_LPAREN, T_RPAREN, T_COMMA, T_SEMICOLON,
     T_NUMBER, T_STRING, T_IDENTIFIER,
     T_SELECT, T_AS, T_FROM, T_WHERE, T_JOIN, T_ON,
@@ -28,7 +29,9 @@ typedef struct ASTNode ASTNode;
 
 struct Token {
     TokenType type;
-    double number;
+    double number; // for T_NUMBER
+    // for T_STRING or T_IDENTIFIER, its name; for other, its description
+    // so that text will never be NULL
     String *text;
 };
 

@@ -5,8 +5,8 @@
 #ifndef BASH_SQL_PARSER_H
 #define BASH_SQL_PARSER_H
 
-#include "util.h"
-#include "defs.h"
+#include "lex.h"
+#include "parse.h"
 
 ASTNode *parse(const String* sql);
 
