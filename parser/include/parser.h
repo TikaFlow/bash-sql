@@ -8,6 +8,6 @@
 #include "lex.h"
 #include "parse.h"
 
-ASTNode *parse(const String &sql);
+ASTNode *parse_sql(const String &sql);
 
 #endif //BASH_SQL_PARSER_H

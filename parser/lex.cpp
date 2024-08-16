@@ -20,7 +20,6 @@ static void init_map() {
     KEYWORD.insert(Keyword("group", T_GROUP));
     KEYWORD.insert(Keyword("by", T_BY));
     KEYWORD.insert(Keyword("order", T_ORDER));
-    KEYWORD.insert(Keyword("having", T_HAVING));
     KEYWORD.insert(Keyword("in", T_IN));
     KEYWORD.insert(Keyword("offset", T_OFFSET));
     KEYWORD.insert(Keyword("limit", T_LIMIT));
@@ -57,10 +56,10 @@ static void init_map() {
 
 static char next() {
     static val len = SQL.length();
-    if (INDEX < len) {
-        return SQL.at(INDEX++);
+    if (INDEX >= len) {
+        return EOF;
     }
-    return EOF;
+    return SQL.at(INDEX++);
 }
 
 static void prev(char c) {

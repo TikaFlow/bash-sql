@@ -4,7 +4,7 @@
 
 #include "parser.h"
 
-ASTNode *parse(const String &sql) {
+ASTNode *parse_sql(const String &sql) {
     if (sql.empty()) {
         return null;
     }
