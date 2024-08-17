@@ -9,6 +9,9 @@ static String SQL;
 static Map<String, TokenType> KEYWORD;
 static Map<TokenType, String> DESC;
 
+/**
+ * initialize the keyword map and description map
+ */
 static void init_map() {
     using Keyword = std::pair<String, TokenType>;
     KEYWORD.insert(Keyword("select", T_SELECT));
@@ -51,9 +54,14 @@ static void init_map() {
     DESC.insert(Description(T_RPAREN, ")"));
     DESC.insert(Description(T_COMMA, ","));
     DESC.insert(Description(T_SEMICOLON, ";"));
-    DESC.insert(Description(T_NUMBER, "number"));
+    DESC.insert(Description(T_INTEGER, "integer"));
+    DESC.insert(Description(T_REAL, "real number"));
 }
 
+/**
+ * get the next character from the SQL string
+ * @return the next character
+ */
 static char next() {
     static val len = SQL.length();
     if (INDEX >= len) {
@@ -62,6 +70,11 @@ static char next() {
     return SQL.at(INDEX++);
 }
 
+/**
+ * push back the character to the SQL string, so that it can be read again
+ * if the character is EOF, do nothing
+ * @param c the character to be pushed back
+ */
 static void prev(char c) {
     if (c == EOF) {
         return;
@@ -71,6 +84,10 @@ static void prev(char c) {
     }
 }
 
+/**
+ * skip the line comment
+ * @return the first character after the line comment
+ */
 static char skip_line_comment() {
     char c;
     while ((c = next()) != '\n' && c != EOF);
@@ -78,6 +95,10 @@ static char skip_line_comment() {
     return c;
 }
 
+/**
+ * skip the white space, line comment
+ * @return the first character we can use
+ */
 static char skip() {
     char c = next();
 
@@ -100,14 +121,11 @@ static char skip() {
     return c;
 }
 
-static Token *new_token() {
-    val token = new Token();
-    token->type = T_EOF;
-    token->number = 0;
-    token->text = "";
-    return token;
-}
-
+/**
+ * escape character in string
+ * @param str the string to be escaped
+ * @return the escaped string
+ */
 static String escape_string(String &str) {
     std::ostringstream oss;
     val len = str.length();
@@ -156,6 +174,10 @@ static String escape_string(String &str) {
     return oss.str();
 }
 
+/**
+ * check if the token is a keyword
+ * @param token the token to be checked
+ */
 static void check_keyword(Token *token) {
     String text = to_lower(token->text);
     if (KEYWORD.count(text) > 0) {
@@ -163,12 +185,21 @@ static void check_keyword(Token *token) {
     }
 }
 
+/**
+ * describe the token
+ * @param token the token to be described
+ */
 static void describe(Token *token) {
     if (DESC.count(token->type) > 0) {
         token->text = DESC.at(token->type);
     }
 }
 
+/**
+ * scan a string starting with quote(' or "), and save it to token
+ * @param token the token to be scanned
+ * @param quote the quote character
+ */
 static void scan_string(Token *token, char quote) {
     char c;
     val start = INDEX;
@@ -186,8 +217,14 @@ static void scan_string(Token *token, char quote) {
     }
 }
 
+/**
+ * scan a number, and save it to token
+ * number can be integer or real
+ * @param token the token to be scanned
+ */
 static void scan_number(Token *token) {
     char c;
+    var dot = false;
     val start = INDEX - 1;
     while ((c = next()) != EOF && isdigit(c));
 
@@ -197,14 +234,23 @@ static void scan_number(Token *token) {
         } else {
             while ((c = next()) != EOF && isdigit(c));
         }
+        dot = true;
     }
 
-    token->type = T_NUMBER;
+    token->type = dot ? T_REAL : T_INTEGER;
     prev(c);
     String str = SQL.substr(start, INDEX - start);
-    token->number = stod(str);
+    if (dot) {
+        token->real = stod(str);
+    } else {
+        token->integer = stoi(str);
+    }
 }
 
+/**
+ * scan an identifier, and save it to token, after that, check if it is a keyword
+ * @param token the token to be scanned
+ */
 static void scan_identifier(Token *token) {
     char c;
     val start = INDEX - 1;
@@ -217,8 +263,12 @@ static void scan_identifier(Token *token) {
     check_keyword(token);
 }
 
+/**
+ * scan a token
+ * @return the token scanned
+ */
 static Token *scan() {
-    Token *token = new_token();
+    val token = new Token();
     char c = skip();
 
     switch (c) {
@@ -299,6 +349,11 @@ static Token *scan() {
     return token;
 }
 
+/**
+ * scan tokens from a sql string
+ * @param sql the sql string to be scanned
+ * @return vector, which contains all tokens
+ */
 Vector<Token *> *lex(const String &sql) {
     SQL = sql;
     init_map();

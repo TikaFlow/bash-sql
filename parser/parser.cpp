@@ -4,6 +4,11 @@
 
 #include "parser.h"
 
+/**
+ * parse sql and return AST tree
+ * @param sql the sql to be parsed
+ * @return AST tree
+ */
 ASTNode *parse_sql(const String &sql) {
     if (sql.empty()) {
         return null;
