@@ -9,7 +9,7 @@
  * @param sql the sql to be parsed
  * @return AST tree
  */
-ASTNode *parse_sql(const String &sql) {
+Vector<ASTNode *> *parse_sql(const String &sql) {
     if (sql.empty()) {
         return null;
     }

@@ -5,6 +5,26 @@
 #ifndef BASH_SQL_DEFS_H
 #define BASH_SQL_DEFS_H
 
+// table name, column name
+using TableColumn = std::pair<String, String>;
+// column type, column index in the table(1-indexed)
+using ColumnCount = std::pair<int, int>;
+// type of result set
+using Table = std::pair<Map<TableColumn, ColumnCount> *, Map<String, int> *>;
+
+/**
+ * select statement
+ * @note writing order: with -> select -> from -> join..on -> where -> group -> order -> limit
+ * @note execution order: with -> from -> join..on -> where -> group -> select -> order -> limit
+ */
+typedef struct SelectStatement SelectStatement;
+typedef struct WithNode WithNode;
+typedef struct SelectNode SelectNode;
+typedef struct FromNode FromNode;
+typedef struct WhereNode WhereNode;
+typedef struct GroupNode GroupNode;
+typedef struct OrderNode OrderNode;
+typedef struct LimitNode LimitNode;
 typedef struct Token Token;
 typedef struct Param Param;
 typedef struct Column Column;
@@ -23,7 +43,7 @@ typedef enum {
 } TokenType;
 
 typedef enum {
-    P_STRING, P_NUMBER,
+    P_STRING, P_INTEGER, P_REAL,
 } ParamType;
 
 typedef enum {
@@ -54,6 +74,12 @@ struct Param {
         long integer;
         double real;
     };
+
+    Param(ParamType type, String str) : type(type), str(std::move(str)) {};
+
+    Param(ParamType type, long value) : type(type), integer(value) {};
+
+    Param(ParamType type, double value) : type(type), real(value) {};
 };
 
 struct Column {
@@ -64,7 +90,7 @@ struct Column {
 struct ASTNode {
     ASTType type;
     /*
-     * []: use next pointer
+     * []: is a list
      * for select: left = with..., mid = from..., right = select... // SELECT_STMT
      *
      * for with...: data(select...[]) // WITH
@@ -87,7 +113,7 @@ struct ASTNode {
     ASTNode *left;
     ASTNode *mid;
     ASTNode *right;
-    ASTNode *next; // next in list
+    Vector<ASTNode *> *list; // subquery list/col list/order list
     union {
         ASTNode *select{};
         union {
@@ -121,7 +147,46 @@ struct ASTNode {
         } limit;
     }; // data
 
-    ASTNode(ASTType type = A_NONE) : type(type), left(null), mid(null), right(null), next(null) {}
+    explicit ASTNode(ASTType type = A_NONE) : type(type), left(null), mid(null), right(null), list(null) {}
+};
+
+struct WithNode {
+    SelectStatement *stmt;
+    String as;
+};
+
+struct SelectNode {
+    Column *col;
+    String as;
+};
+
+struct FromNode {
+};
+
+struct WhereNode {
+};
+
+struct GroupNode {
+};
+
+struct OrderNode {
+    String col;
+    bool asc = true;
+};
+
+struct LimitNode {
+    int offset;
+    int limit;
+};
+
+struct SelectStatement {
+    Vector<WithNode> *with;
+    Vector<SelectNode> *select;
+    FromNode *from;
+    WhereNode *where;
+    Vector<String> *group;
+    Vector<OrderNode> *order;
+    LimitNode *limit;
 };
 
 #endif //BASH_SQL_DEFS_H

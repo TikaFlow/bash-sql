@@ -4,9 +4,12 @@
 
 #include "main.h"
 
+int COL_NUM = -1;
+
 int main(int argc, char *argv[]) {
     // parse command line options
     val options = parse_cmd_options(argc, argv);
+    COL_NUM = options.columns;
 
     // get parsed sql ast
     val sql = parse_sql(options.query);

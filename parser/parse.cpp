@@ -4,19 +4,49 @@
 
 #include "parse.h"
 
+// next token index to be process
 static int INDEX = 0;
+// token vector from lexer
 static const Vector<Token *> *TOKEN;
-static Map<String, int> FUNC;
+// function name, params vector
+static Map<String, Vector<Param *>> FUNC;
+// table.column, columns desc
+static Map<TableColumn, ColumnCount> TABLE;
+// column count
+static Map<String, int> COLUMN;
+// init column number, 32 by default
+extern int COL_NUM;
 
 /**
- * initialize the function map
+ * initialize the table map and function map
  */
 static void init_map() {
-    FUNC["sum"] = 1;
-    FUNC["avg"] = 1;
-    FUNC["count"] = 1;
-    FUNC["max"] = 1;
-    FUNC["min"] = 1;
+    // table std by default
+    for (int i = 1; i <= COL_NUM; ++i) {
+        String col = "col" + to_string(i);
+        TABLE[{"std", col}] = {P_STRING, i};
+        COLUMN[col] = 1;
+    }
+
+    using ParamList = Vector<Param *>;
+    // TODO add functions
+}
+
+/**
+ * initialize the table map for a result set
+ * @param use_std use std table or not
+ * @return table map
+ */
+static Table init_table(bool use_std = false) {
+    var table_col = new Map<TableColumn, ColumnCount>();
+    var col_count = new Map<String, int>();
+
+    if (use_std) {
+        table_col->insert(TABLE.begin(), TABLE.end());
+        col_count->insert(COLUMN.begin(), COLUMN.end());
+    }
+
+    return {table_col, col_count};
 }
 
 /**
@@ -112,6 +142,16 @@ static ASTNode *parse_from(ASTNode *select) {
 }
 
 /**
+ * parse FROM clause, and rebuild column in SELECT clause
+ * @param select node of SELECT clause
+ * @return node of FROM clause
+ * @todo implement
+ */
+static ASTNode *from_std(ASTNode *select) {
+    return new ASTNode();
+}
+
+/**
  * parse one ORDER BY column with asc or desc
  * @param stmt node of SELECT statement
  * @return node of ORDER BY column
@@ -161,7 +201,6 @@ static ASTNode *parse_order_by(ASTNode *stmt) {
         }
 
         if (head) {
-            tail->next = order;
             tail = order;
         } else {
             head = order;
@@ -203,24 +242,22 @@ static ASTNode *parse_limit() {
 }
 
 /**
- * parse SELECT statement behind WITH clause(maybe there is none)
- * or sub SELECT statement in WITH clause
- * @param is_with true if it is in WITH clause
- * @param stmt node of SELECT statement
+ * parse SELECT statement
+ * @param with node of WITH clause
  * @return node of SELECT statement
  */
-static ASTNode *parse_select_stmt(bool is_with, ASTNode *stmt = null) {
-    if (!stmt) {
-        stmt = new ASTNode(is_with ? A_WITH : A_SELECT_STMT);
-    }
+static ASTNode *parse_select_stmt(ASTNode *with = null) {
+    val stmt = new ASTNode(A_SELECT_STMT);
+    stmt->left = with;
 
-    stmt->right = new ASTNode(A_SELECT);
-    val select = stmt->right;
+    val select = stmt->right = new ASTNode(A_SELECT);
     select->left = parse_select();
 
     if (peek()->type == T_FROM) {
         pop();
         stmt->mid = parse_from(select);
+    } else {
+        stmt->mid = from_std(select);
     }
 
     if (peek()->type == T_ORDER) {
@@ -236,51 +273,54 @@ static ASTNode *parse_select_stmt(bool is_with, ASTNode *stmt = null) {
 }
 
 /**
- * parse SELECT clause starting with WITH
- * @return node of SELECT statement
+ * parse WITH clause
+ * @return node of WITH clause
  */
-static ASTNode *parse_with() {
-    val stmt = new ASTNode(A_SELECT_STMT);
-    ASTNode *head = null, *tail;
-    ASTNode *with;
+static ASTNode *parse_with_queries() {
+    val with = new ASTNode(A_WITH);
+    val list = new Vector<ASTNode *>();
 
+    ASTNode *query;
     do {
         match(T_IDENTIFIER, "temporary table name");
         val temp = pop()->text;
         match(T_AS, "as");
         match(T_LPAREN, "open parentheses");
         match(T_SELECT, "select clause");
-        with = parse_select_stmt(true);
+        query = parse_select_stmt();
         match(T_RPAREN, "close parentheses");
 
-        if (head) {
-            tail->next = with;
-            tail = with;
-        } else {
-            head = tail = with;
-        }
+        list->push_back(query);
     } while (pop()->type != T_COMMA);
     unpop();
-    stmt->left = head;
+
+    with->list = list;
+
+    return with;
+}
+
+/**
+ * parse SELECT clause starting with WITH
+ * @return node of SELECT statement
+ */
+static ASTNode *parse_with() {
+    val left = parse_with_queries();
 
     match(T_SELECT, "select clause");
-    parse_select_stmt(false, stmt);
-
-    return stmt;
+    return parse_select_stmt(left);
 }
 
 /**
  * parse several SELECT statements separated by semicolon
- * @note writing order: with -> select -> from -> join..on -> where -> group -> order -> limit
- * @note execution order: with -> from -> join..on -> where -> group -> select -> order -> limit
- * @return head node of linked list, every node is a statement
+ * @return vector of SELECT statements
  */
-static ASTNode *parse() {
+static Vector<ASTNode *> *parse() {
+    ASTNode *node;
     Token *start;
-    ASTNode *head = null, *tail, *node;
+    val queries = new Vector<ASTNode *>();
     while ((start = pop())) {
         if (start->type == T_SELECT) {
-            node = parse_select_stmt(false);
+            node = parse_select_stmt();
         } else if (start->type == T_WITH) {
             node = parse_with();
         } else {
@@ -288,15 +328,10 @@ static ASTNode *parse() {
         }
         match(T_SEMICOLON, "semicolon at the end of sql statement");
 
-        if (head) {
-            tail->next = node;
-            tail = node;
-        } else {
-            head = tail = node;
-        }
+        queries->push_back(node);
     }
 
-    return head;
+    return queries;
 }
 
 /**
@@ -304,7 +339,7 @@ static ASTNode *parse() {
  * @param tokens tokens
  * @return head node of linked list, every node is a statement
  */
-ASTNode *parse(Vector<Token *> *tokens) {
+Vector<ASTNode *> *parse(Vector<Token *> *tokens) {
     TOKEN = tokens;
     init_map();
     return parse();
