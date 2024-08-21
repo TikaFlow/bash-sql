@@ -23,6 +23,8 @@ static void init_map() {
     KEYWORD.insert(Keyword("group", T_GROUP));
     KEYWORD.insert(Keyword("by", T_BY));
     KEYWORD.insert(Keyword("order", T_ORDER));
+    KEYWORD.insert(Keyword("asc", T_ASC));
+    KEYWORD.insert(Keyword("desc", T_DESC));
     KEYWORD.insert(Keyword("in", T_IN));
     KEYWORD.insert(Keyword("offset", T_OFFSET));
     KEYWORD.insert(Keyword("limit", T_LIMIT));
@@ -182,6 +184,7 @@ static void check_keyword(Token *token) {
     String text = to_lower(token->text);
     if (KEYWORD.count(text) > 0) {
         token->type = KEYWORD.at(text);
+        token->text = text; // prevent mixed case
     }
 }
 

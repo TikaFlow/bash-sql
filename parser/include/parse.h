@@ -8,6 +8,6 @@
 #include "util.h"
 #include "defs.h"
 
-Vector<ASTNode *> *parse(Vector<Token *> *tokens);
+Vector<SelectStatement *> *parse(Vector<Token *> *tokens);
 
 #endif //BASH_SQL_PARSE_H

@@ -37,14 +37,14 @@ typedef enum {
     T_LPAREN, T_RPAREN, T_COMMA, T_SEMICOLON,
     T_INTEGER, T_REAL, T_STRING, T_IDENTIFIER,
     T_SELECT, T_AS, T_FROM, T_WHERE, T_JOIN, T_ON,
-    T_GROUP, T_BY, T_ORDER, T_IN, T_OFFSET, T_LIMIT,
+    T_GROUP, T_BY, T_ORDER, T_ASC, T_DESC, T_IN, T_OFFSET, T_LIMIT,
     T_AND, T_OR, T_NOT, T_IS, T_NULL,
     T_WHEN, T_THEN, T_ELSE, T_WITH,
 } TokenType;
 
 typedef enum {
-    P_STRING, P_INTEGER, P_REAL,
-} ParamType;
+    D_STRING, D_INT, D_REAL, D_BOOL,
+} DataType;
 
 typedef enum {
     A_NONE,
@@ -68,18 +68,21 @@ struct Token {
 };
 
 struct Param {
-    ParamType type;
+    DataType type;
     union {
-        String str;
-        long integer;
-        double real;
+        String s;
+        long l;
+        double d;
+        bool b;
     };
 
-    Param(ParamType type, String str) : type(type), str(std::move(str)) {};
+    explicit Param(String str) : type(D_STRING), s(std::move(str)) {};
 
-    Param(ParamType type, long value) : type(type), integer(value) {};
+    explicit Param(long value) : type(D_INT), l(value) {};
 
-    Param(ParamType type, double value) : type(type), real(value) {};
+    explicit Param(double value) : type(D_REAL), d(value) {};
+
+    explicit Param(bool value) : type(D_BOOL), b(value) {};
 };
 
 struct Column {
@@ -88,66 +91,11 @@ struct Column {
 };
 
 struct ASTNode {
-    ASTType type;
-    /*
-     * []: is a list
-     * for select: left = with..., mid = from..., right = select... // SELECT_STMT
-     *
-     * for with...: data(select...[]) // WITH
-     * for from...: left = ...join..., right = where... // FROM
-     * for select...: left = cols..., mid = order by..., right = limit... // SELECT
-     *
-     * for join...: tree(and) // JOIN
-     * for where...: left = tree(and/or), right = group by... // WHERE
-     * for cols...: data(col[]) // COL
-     * for order by...: data(order[]) // ORDER
-     * for limit...: data(offset, limit) // LIMIT
-     *
-     * for tree: and/or(left, right) // LOGIC_AND/LOGIC_OR
-     * for group by...: data(col[]) // GROUP
-     * for col: data(func(col), as) // COL
-     * for order: data(col, asc/desc) // ORDER
-     *
-     * for func: data(name, args<>) // FUNC
-     */
+    ASTType atype;
+    DataType dtype;
     ASTNode *left;
     ASTNode *mid;
     ASTNode *right;
-    Vector<ASTNode *> *list; // subquery list/col list/order list
-    union {
-        ASTNode *select{};
-        union {
-            // data  may be one of: literal, func_call, raw col
-            String str;
-            double num;
-            ASTNode *call;
-            Column col;
-        } condition;
-        union {
-            struct {
-                String name;
-                Vector<Param> *args;
-            } call;
-            Param literal;
-        } func; // also used in literal expression
-        struct {
-            union {
-                ASTNode *call; // if a func_call
-                Column col; // or raw col
-            };
-            String as;
-        } col; // also used in group by...
-        struct {
-            Column col;
-            bool asc;
-        } order;
-        struct {
-            int count;
-            int offset;
-        } limit;
-    }; // data
-
-    explicit ASTNode(ASTType type = A_NONE) : type(type), left(null), mid(null), right(null), list(null) {}
 };
 
 struct WithNode {
@@ -156,7 +104,7 @@ struct WithNode {
 };
 
 struct SelectNode {
-    Column *col;
+    ASTNode *col; // Column expression
     String as;
 };
 
@@ -167,16 +115,17 @@ struct WhereNode {
 };
 
 struct GroupNode {
+    // Column expression, directly included in SelectStatement
 };
 
 struct OrderNode {
-    String col;
-    bool asc = true;
+    int index;
+    bool asc;
 };
 
 struct LimitNode {
     int offset;
-    int limit;
+    int count;
 };
 
 struct SelectStatement {
@@ -184,7 +133,7 @@ struct SelectStatement {
     Vector<SelectNode> *select;
     FromNode *from;
     WhereNode *where;
-    Vector<String> *group;
+    Vector<ASTNode *> *group;
     Vector<OrderNode> *order;
     LimitNode *limit;
 };

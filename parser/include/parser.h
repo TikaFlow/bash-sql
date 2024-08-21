@@ -8,6 +8,6 @@
 #include "lex.h"
 #include "parse.h"
 
-Vector<ASTNode *> *parse_sql(const String &sql);
+Vector<SelectStatement *> *parse_sql(const String &sql);
 
 #endif //BASH_SQL_PARSER_H
