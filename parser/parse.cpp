@@ -17,6 +17,26 @@ static Map<String, int> COLUMN;
 // init column number, 32 by default
 extern int COL_NUM;
 
+static ASTNode *expression();
+
+/**
+ * compatible data type of two sides
+ * @param left left data type
+ * @param right right data type
+ * @return compatible data type
+ */
+static DataType cast_type(DataType left, DataType right) {
+    if (left == D_STRING || right == D_STRING || left == D_BOOL || right == D_BOOL) {
+        show_error("illegal operands");
+    }
+
+    if (left == D_REAL || right == D_REAL) {
+        return D_REAL;
+    }
+
+    return D_INT;
+}
+
 /**
  * initialize the table map and function map
  */
@@ -101,51 +121,139 @@ static Token *match(TokenType type, const String &what) {
 /**
  * parse function call
  * @note function_call ::= identifier "(" [expression {"," expression}] ")"
+ * @param name function name
  * @return ast node of the function call
- * @todo implement
  */
-static ASTNode *function_call() {
-    return null;
+static ASTNode *function_call(const String &name) {
+    ASTNode *node, *left = null;
+
+    pop(); // pop "("
+    if (peek()->type != T_RPAREN) {
+        left = expression();
+        var tk = peek();
+        while (tk->type == T_COMMA) {
+            pop();
+            // todo get type
+            left = new ASTNode(A_PARAM, D_STRING, left, null);
+        }
+    }
+    match(T_RPAREN, "close parenthesis");
+    // todo check if the function exists and get the return type
+    node = new ASTNode(A_FUNC_CALL, D_STRING, left, null);
+
+    return node;
 }
 
 /**
  * parse primary expression
  * @note primary ::= number | string | identifier | function_call | "(" expression ")"
  * @return ast node of the primary expression
- * @todo implement
  */
-static ASTNode *primary(){
-    return null;
+static ASTNode *primary() {
+    String name;
+    ASTNode *node;
+
+    var tk = peek();
+    switch (tk->type) {
+        case T_INTEGER:
+            node = new ASTNode(A_LITERAL, D_INT, null, null);
+            break;
+        case T_REAL:
+            node = new ASTNode(A_LITERAL, D_REAL, null, null);
+            break;
+        case T_STRING:
+            node = new ASTNode(A_LITERAL, D_STRING, null, null);
+            break;
+        case T_IDENTIFIER:
+            name = pop()->text;
+            if (peek()->type == T_LPAREN) {
+                node = function_call(name);
+            } else {
+                // todo check if the column exists and get the type
+                node = new ASTNode(A_COLUMN, D_STRING, null, null);
+            }
+            break;
+        case T_LPAREN:
+            pop();
+            node = expression();
+            match(T_RPAREN, "close parenthesis");
+            break;
+        default:
+            show_error("Expected primary expression but got '" + tk->text + "'");
+            break;
+    }
+
+    return node;
 }
 
 /**
  * parse factor in expression
- * @note factor ::= primary | "+" factor | "-" factor
+ * @note factor ::= ["+" | "-"] primary
  * @return ast node of the factor
- * @todo implement
  */
-static ASTNode *factor(){
-    return null;
+static ASTNode *factor() {
+    val tk = peek();
+    if (tk->type == T_PLUS || tk->type == T_MINUS) {
+        pop();
+    }
+    var left = primary();
+
+    if (tk->type == T_MINUS) {
+        left = new ASTNode(A_NEGATE, left->dtype, left, null);
+    }
+    return left;
 }
 
 /**
  * parse term in expression
  * @note term ::= factor { ( "*" | "/" | "%") factor }
  * @return ast node of the term
- * @todo implement
  */
-static ASTNode *term(){
-    return null;
+static ASTNode *term() {
+    var left = factor();
+    var tk = peek();
+
+    while (tk && (tk->type == T_STAR || tk->type == T_SLASH || tk->type == T_MOD)) {
+        pop();
+        val right = factor();
+        val atype = tk->type == T_STAR ? A_MUL :
+                    (tk->type == T_SLASH ? A_DIV : A_MOD);
+        val dtype = cast_type(left->dtype, right->dtype);
+        left = new ASTNode(atype, dtype, left, right);
+        tk = peek();
+    }
+
+    return left;
 }
 
 /**
  * parse column expression in select clause
  * @note expression ::= term { ( "+" | "-" ) term }
  * @return ast node of the column expression
- * @todo implement
  */
 static ASTNode *expression() {
-    return null;
+    var left = term();
+    var tk = peek();
+
+    while (tk && (tk->type == T_PLUS || tk->type == T_MINUS)) {
+        pop();
+        val right = term();
+        val atype = tk->type == T_PLUS ? A_ADD : A_SUB;
+        val dtype = cast_type(left->dtype, right->dtype);
+        left = new ASTNode(atype, dtype, left, right);
+        tk = peek();
+    }
+
+    return left;
+}
+
+/**
+ * expand "*" to all columns in the table
+ * @param select vector of select node
+ * @todo implement
+ */
+static void expand_star(Vector<SelectNode> *select) {
+
 }
 
 /**
@@ -155,6 +263,15 @@ static ASTNode *expression() {
 static Vector<SelectNode> *parse_select() {
     val select = new Vector<SelectNode>();
     do {
+        if (peek()->type == T_STAR) {
+            pop();
+            expand_star(select);
+            if (pop()->type == T_COMMA) {
+                continue;
+            }
+            break;
+        }
+
         val col = expression();
         String as;
         if (peek()->type == T_AS) {
