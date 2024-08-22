@@ -86,23 +86,88 @@ static void unpop() {
  * check if the next token is the expected type
  * @param type expected type
  * @param what what to show if the type is not matched
+ * @return the expected token, return value would never be null
  */
-static void match(TokenType type, const String &what) {
+static Token *match(TokenType type, const String &what) {
     Token *token = pop();
-    if (token->type == type) {
-        return;
+    if (token && token->type == type) {
+        return token;
     } else {
-        show_error("Expected " + what + " but got '" + token->text + "'");
+        show_error("Expected " + what + " but got '" + (token ? token->text : "nothing") + "'");
     }
+    return null; // make compiler happy
+}
+
+/**
+ * parse function call
+ * @note function_call ::= identifier "(" [expression {"," expression}] ")"
+ * @return ast node of the function call
+ * @todo implement
+ */
+static ASTNode *function_call() {
+    return null;
+}
+
+/**
+ * parse primary expression
+ * @note primary ::= number | string | identifier | function_call | "(" expression ")"
+ * @return ast node of the primary expression
+ * @todo implement
+ */
+static ASTNode *primary(){
+    return null;
+}
+
+/**
+ * parse factor in expression
+ * @note factor ::= primary | "+" factor | "-" factor
+ * @return ast node of the factor
+ * @todo implement
+ */
+static ASTNode *factor(){
+    return null;
+}
+
+/**
+ * parse term in expression
+ * @note term ::= factor { ( "*" | "/" | "%") factor }
+ * @return ast node of the term
+ * @todo implement
+ */
+static ASTNode *term(){
+    return null;
+}
+
+/**
+ * parse column expression in select clause
+ * @note expression ::= term { ( "+" | "-" ) term }
+ * @return ast node of the column expression
+ * @todo implement
+ */
+static ASTNode *expression() {
+    return null;
 }
 
 /**
  * parse SELECT clause
  * @return vector of SELECT node
- * @todo implement
  */
 static Vector<SelectNode> *parse_select() {
-    return new Vector<SelectNode>();
+    val select = new Vector<SelectNode>();
+    do {
+        val col = expression();
+        String as;
+        if (peek()->type == T_AS) {
+            pop();
+            as = match(T_STRING, "column alias")->text;
+            // add alias to list to avoid conflict
+        }
+
+        select->push_back({col, as});
+    } while (pop()->type == T_COMMA);
+    unpop();
+
+    return select;
 }
 
 /**
@@ -178,13 +243,11 @@ static Vector<OrderNode> *parse_order_by(Vector<SelectNode> *stmt) {
  */
 static LimitNode *parse_limit() {
     val node = new LimitNode();
-    match(T_INTEGER, "integer");
-    long count = pop()->integer, offset = 0;
+    long count = match(T_INTEGER, "integer")->integer, offset = 0;
     TokenType type = peek()->type;
     if (type == T_COMMA || type == T_OFFSET) {
         pop(); // comma/offset
-        match(T_INTEGER, "integer");
-        offset = pop()->integer;
+        offset = match(T_INTEGER, "integer")->integer;
         if (type == T_COMMA) {
             long temp = offset;
             offset = count;
@@ -232,6 +295,7 @@ static SelectStatement *parse_select_stmt(Vector<WithNode> *with = null) {
         pop();
         stmt->order = parse_order_by(stmt->select);
     }
+
     if (peek()->type == T_LIMIT) {
         pop();
         stmt->limit = parse_limit();
@@ -249,8 +313,7 @@ static Vector<WithNode> *parse_with_queries() {
     SelectStatement *query;
 
     do {
-        val temp = peek()->text;
-        match(T_IDENTIFIER, "temporary table name");
+        val temp = match(T_IDENTIFIER, "temporary table name")->text;
         match(T_AS, "as");
         match(T_LPAREN, "open parentheses");
         match(T_SELECT, "select clause");

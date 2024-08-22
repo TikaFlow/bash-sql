@@ -33,9 +33,6 @@ static void init_map() {
     KEYWORD.insert(Keyword("not", T_NOT));
     KEYWORD.insert(Keyword("is", T_IS));
     KEYWORD.insert(Keyword("null", T_NULL));
-    KEYWORD.insert(Keyword("when", T_WHEN));
-    KEYWORD.insert(Keyword("then", T_THEN));
-    KEYWORD.insert(Keyword("else", T_ELSE));
     KEYWORD.insert(Keyword("with", T_WITH));
 
     using Description = std::pair<TokenType, String>;
