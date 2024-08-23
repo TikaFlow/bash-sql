@@ -7,78 +7,42 @@
 // next token index to be process
 static int INDEX = 0;
 // token vector from lexer
-static const Vector<Token *> *TOKEN;
-// function name, params vector
-static Map<String, Vector<Param *>> FUNC;
-// table.column, columns desc
-static Map<TableColumn, ColumnCount> TABLE;
-// column count
-static Map<String, int> COLUMN;
+static const Vector<Token *> *TOKENS;
+// build-in functions
+static const Map<String, DataType> FUNCS = {
+        {"sub_str", D_STRING},
+        {"lower",   D_STRING},
+        {"upper",   D_STRING},
+        {"trim",    D_STRING},
+};
+// column type, column index in the table(0-indexed), -1 if ambiguous
+using ColumnDesc = std::pair<DataType, int>;
+// column name, columns type
+using Table = Vector<std::pair<String, DataType>>;
+// maintain 3 lists for every select
+// columns of "from" set
+static Map<String, ColumnDesc> FROMS;
+// aliases, index
+static Map<String, int> ALIAS;
+// columns selected
+static Table *SELECTS;
+// all tables
+static Map<String, Table *> TABLES;
 // init column number, 32 by default
 extern int COL_NUM;
 
 static ASTNode *expression();
 
 /**
- * compatible data type of two sides
- * @param left left data type
- * @param right right data type
- * @return compatible data type
- */
-static DataType cast_type(DataType left, DataType right) {
-    if (left == D_STRING || right == D_STRING || left == D_BOOL || right == D_BOOL) {
-        show_error("illegal operands");
-    }
-
-    if (left == D_REAL || right == D_REAL) {
-        return D_REAL;
-    }
-
-    return D_INT;
-}
-
-/**
- * initialize the table map and function map
- */
-static void init_map() {
-    // table std by default
-    for (int i = 1; i <= COL_NUM; ++i) {
-        String col = "col" + to_string(i);
-        TABLE[{"std", col}] = {D_STRING, i};
-        COLUMN[col] = 1;
-    }
-
-    using ParamList = Vector<Param *>;
-    // TODO add functions
-}
-
-/**
- * initialize the table map for a result set
- * @param use_std use std table or not
- * @return table map
- */
-static Table init_table(bool use_std = false) {
-    var table_col = new Map<TableColumn, ColumnCount>();
-    var col_count = new Map<String, int>();
-
-    if (use_std) {
-        table_col->insert(TABLE.begin(), TABLE.end());
-        col_count->insert(COLUMN.begin(), COLUMN.end());
-    }
-
-    return {table_col, col_count};
-}
-
-/**
  * peek one token
  * @return token, null if no more token
  */
 static Token *peek() {
-    static val size = TOKEN->size();
+    static val size = TOKENS->size();
     if (INDEX >= size) {
         return null;
     }
-    return TOKEN->at(INDEX);
+    return TOKENS->at(INDEX);
 }
 
 /**
@@ -119,27 +83,97 @@ static Token *match(TokenType type, const String &what) {
 }
 
 /**
+ * initialize the std table
+ */
+static void init_std() {
+    val std = new Table();
+
+    if (COL_NUM < 1) {
+        COL_NUM = 32;
+    }
+    for (int i = 0; i < COL_NUM; ++i) {
+        std->push_back({"col" + std::to_string(i + 1), D_STRING});
+    }
+
+    TABLES.insert({"std", std});
+}
+
+/**
+ * prepare the table for parsing
+ */
+static void stmt_start() {
+    FROMS.clear();
+    ALIAS.clear();
+    SELECTS = new Table();
+}
+
+/**
+ * compatible data type of two sides
+ * @param left left data type
+ * @param right right data type
+ * @return compatible data type
+ */
+static DataType cast_type(ASTNode *left, ASTNode *right, ASTType op_type) {
+    DataType left_type = left->dtype, right_type = right->dtype;
+
+    if (op_type >= A_ADD && op_type <= A_MOD) { // mathematical operator
+        if (left_type == D_STRING || right_type == D_STRING || left_type == D_BOOL || right_type == D_BOOL) {
+            show_error("incompatible operands");
+        }
+
+        if (left_type == D_REAL || right_type == D_REAL) {
+            return D_REAL;
+        }
+
+        return D_INT;
+    } else if (op_type == A_EQ || op_type == A_OR) { // logic operator
+        if (left_type == D_BOOL && right_type == D_BOOL) {
+            return D_BOOL;
+        }
+        show_error("incompatible operands");
+    }
+
+    return D_STRING; // make compiler happy
+}
+
+/**
+ * resolve string to table str and column str
+ * @param str string to resolve
+ * @return pair of table name and column name
+ */
+static std::pair<String, String> *resolve_column(const String &str) {
+    val pos = str.find('.');
+
+    if (pos == npos) {
+        return new std::pair<String, String>{"", str};
+    }
+    return new std::pair<String, String>{str.substr(0, pos), str.substr(pos + 1)};
+}
+
+/**
  * parse function call
  * @note function_call ::= identifier "(" [expression {"," expression}] ")"
  * @param name function name
  * @return ast node of the function call
  */
 static ASTNode *function_call(const String &name) {
-    ASTNode *node, *left = null;
+    ASTNode *node, *left = null, *param;
+    String func = to_lower(name);
+    if (!FUNCS.count(func)) {
+        show_error("Unknown function '" + func + "'");
+    }
 
     pop(); // pop "("
     if (peek()->type != T_RPAREN) {
-        left = expression();
+        param = expression();
         var tk = peek();
         while (tk->type == T_COMMA) {
             pop();
-            // todo get type
-            left = new ASTNode(A_PARAM, D_STRING, left, null);
+            left = new ASTNode(A_PARAM, D_NONE, left, param);
         }
     }
     match(T_RPAREN, "close parenthesis");
-    // todo check if the function exists and get the return type
-    node = new ASTNode(A_FUNC_CALL, D_STRING, left, null);
+    node = new ASTNode(A_FUNC_CALL, FUNCS.at(func), left, null);
 
     return node;
 }
@@ -156,13 +190,13 @@ static ASTNode *primary() {
     var tk = peek();
     switch (tk->type) {
         case T_INTEGER:
-            node = new ASTNode(A_LITERAL, D_INT, null, null);
+            node = new ASTNode(A_LITERAL, D_INT, null, null, tk->integer);
             break;
         case T_REAL:
-            node = new ASTNode(A_LITERAL, D_REAL, null, null);
+            node = new ASTNode(A_LITERAL, D_REAL, null, null, tk->real);
             break;
         case T_STRING:
-            node = new ASTNode(A_LITERAL, D_STRING, null, null);
+            node = new ASTNode(A_LITERAL, D_STRING, null, null, tk->text);
             break;
         case T_IDENTIFIER:
             name = pop()->text;
@@ -170,7 +204,7 @@ static ASTNode *primary() {
                 node = function_call(name);
             } else {
                 // todo check if the column exists and get the type
-                node = new ASTNode(A_COLUMN, D_STRING, null, null);
+                node = new ASTNode(A_COLUMN, D_NONE, null, null, name);
             }
             break;
         case T_LPAREN:
@@ -218,7 +252,7 @@ static ASTNode *term() {
         val right = factor();
         val atype = tk->type == T_STAR ? A_MUL :
                     (tk->type == T_SLASH ? A_DIV : A_MOD);
-        val dtype = cast_type(left->dtype, right->dtype);
+        val dtype = cast_type(left, right, atype);
         left = new ASTNode(atype, dtype, left, right);
         tk = peek();
     }
@@ -239,7 +273,7 @@ static ASTNode *expression() {
         pop();
         val right = term();
         val atype = tk->type == T_PLUS ? A_ADD : A_SUB;
-        val dtype = cast_type(left->dtype, right->dtype);
+        val dtype = cast_type(left, right, atype);
         left = new ASTNode(atype, dtype, left, right);
         tk = peek();
     }
@@ -254,6 +288,20 @@ static ASTNode *expression() {
  */
 static void expand_star(Vector<SelectNode> *select) {
 
+}
+
+/**
+ * add alias to list and avoid conflict
+ * @param alias alias name
+ */
+static void add_alias(const String &alias) {
+    String name = to_lower(alias);
+    if (ALIAS.count(name)) {
+        show_error("Duplicate alias name: " + name);
+    }
+
+    ALIAS.insert({name, SELECTS->size()});
+    SELECTS->emplace_back(name, D_NONE);
 }
 
 /**
@@ -274,11 +322,14 @@ static Vector<SelectNode> *parse_select() {
 
         val col = expression();
         String as;
+        if (col->atype == A_COLUMN) {
+            as = resolve_column(col->s)->second;
+        }
         if (peek()->type == T_AS) {
             pop();
             as = match(T_STRING, "column alias")->text;
-            // add alias to list to avoid conflict
         }
+        add_alias(as);
 
         select->push_back({col, as});
     } while (pop()->type == T_COMMA);
@@ -297,7 +348,7 @@ static FromNode *parse_from() {
 }
 
 /**
- * generate from node of "from std", when no from clause, use std
+ * generate from node of "from std", when no from clause, use std as default
  * @return pointer to FROM node
  * @todo implement
  */
@@ -306,13 +357,29 @@ static FromNode *from_std() {
 }
 
 /**
- * get column index from SELECT clause, which starts from 1
- * @param stmt SELECT clause
- * @return index of the column in SELECT clause
- * @todo implement
+ * check if the select columns are valid
+ * and repair types if needed
+ * @param from FROM clause
+ * @param select SELECT clause
  */
-static int parse_order_col(const String &col, Vector<SelectNode> *stmt) {
-    return 1;
+static void validate_select(FromNode *from, Vector<SelectNode> *select) {}
+
+/**
+ * get column index from SELECT clause, which starts from 0
+ * @return index of the column in SELECT clause
+ */
+static int parse_order_col(const String &col) {
+    int order = -1;
+    String name = to_lower(col);
+
+    if (ALIAS.count(name)) {
+        order = ALIAS[name];
+    }
+
+    if (order == -1) {
+        show_error("Column " + name + " not found in select clause");
+    }
+    return order;
 }
 
 /**
@@ -329,9 +396,12 @@ static Vector<OrderNode> *parse_order_by(Vector<SelectNode> *stmt) {
     do {
         var token = pop();
         if (token->type == T_INTEGER) {
-            order = (int) token->integer;
+            order = (int) token->integer - 1;
+            if (order < 0) {
+                show_error("Column index must be greater than 0");
+            }
         } else if (token->type == T_STRING) {
-            order = parse_order_col(token->text, stmt);
+            order = parse_order_col(token->text);
         } else {
             show_error("Expected column name or index but got " + token->text);
         }
@@ -383,7 +453,8 @@ static LimitNode *parse_limit() {
  * @param with WITH clause
  * @return pointer to SELECT statement
  */
-static SelectStatement *parse_select_stmt(Vector<WithNode> *with = null) {
+static SelectStatement *parse_select_stmt(const String &name, Vector<WithNode> *with = null) {
+    stmt_start();
     val stmt = new SelectStatement();
 
     stmt->with = with;
@@ -394,6 +465,11 @@ static SelectStatement *parse_select_stmt(Vector<WithNode> *with = null) {
         stmt->from = parse_from();
     } else {
         stmt->from = from_std();
+    }
+    validate_select(stmt->from, stmt->select);
+    if (!name.empty()) {
+        // add to table map
+        TABLES.insert({name, SELECTS});
     }
 
     if (peek()->type == T_WHERE) {
@@ -434,7 +510,7 @@ static Vector<WithNode> *parse_with_queries() {
         match(T_AS, "as");
         match(T_LPAREN, "open parentheses");
         match(T_SELECT, "select clause");
-        query = parse_select_stmt();
+        query = parse_select_stmt(temp);
         match(T_RPAREN, "close parentheses");
 
         with->push_back({query, temp});
@@ -452,7 +528,7 @@ static SelectStatement *parse_with() {
     val with = parse_with_queries();
 
     match(T_SELECT, "select clause");
-    return parse_select_stmt(with);
+    return parse_select_stmt("", with);
 }
 
 /**
@@ -465,7 +541,7 @@ static Vector<SelectStatement *> *parse() {
     val queries = new Vector<SelectStatement *>();
     while ((start = pop())) {
         if (start->type == T_SELECT) {
-            stmt = parse_select_stmt();
+            stmt = parse_select_stmt("");
         } else if (start->type == T_WITH) {
             stmt = parse_with();
         } else {
@@ -485,7 +561,7 @@ static Vector<SelectStatement *> *parse() {
  * @return vector of SQL statements
  */
 Vector<SelectStatement *> *parse(Vector<Token *> *tokens) {
-    TOKEN = tokens;
-    init_map();
+    TOKENS = tokens;
+    init_std();
     return parse();
 }

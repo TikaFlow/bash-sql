@@ -5,13 +5,6 @@
 #ifndef BASH_SQL_DEFS_H
 #define BASH_SQL_DEFS_H
 
-// table name, column name
-using TableColumn = std::pair<String, String>;
-// column type, column index in the table(1-indexed)
-using ColumnCount = std::pair<int, int>;
-// type of result set
-using Table = std::pair<Map<TableColumn, ColumnCount> *, Map<String, int> *>;
-
 /**
  * select statement
  * @note writing order: with -> select -> from -> join..on -> where -> group -> order -> limit
@@ -42,11 +35,13 @@ typedef enum {
 } TokenType;
 
 typedef enum {
+    D_NONE, // represents to be determined
     D_STRING, D_INT, D_REAL, D_BOOL,
+    D_NUMBER, // in function, check if is real or int
 } DataType;
 
 typedef enum {
-    A_FUNC_CALL,A_PARAM, A_LITERAL, A_COLUMN,
+    A_FUNC_CALL, A_PARAM, A_LITERAL, A_COLUMN,
     A_ADD, A_SUB, A_NEGATE, A_MUL, A_DIV, A_MOD,
     A_EQ, A_NE, A_LT, A_GT, A_LE, A_GE,
     A_AND, A_OR, A_NOT, A_ISNULL, A_NOTNULL, A_IN, A_NOTIN,
@@ -66,11 +61,11 @@ struct Token {
 struct Param {
     DataType type;
     union {
-        String s;
         long l;
         double d;
         bool b;
     };
+    String s;
 
     explicit Param(String str) : type(D_STRING), s(std::move(str)) {};
 
@@ -91,12 +86,24 @@ struct ASTNode {
     DataType dtype;
     ASTNode *left;
     ASTNode *right;
-    // todo need value field
-
-    ASTNode() {}
+    union {
+        long l;
+        double d;
+        bool b;
+    };
+    String s;
 
     ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right) :
-            atype(atype), dtype(dtype), left(left), right(right) {}
+            atype(atype), dtype(dtype), left(left), right(right), l(0) {}
+
+    ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right, long l) :
+            atype(atype), dtype(dtype), left(left), right(right), l(l) {}
+
+    ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right, double d) :
+            atype(atype), dtype(dtype), left(left), right(right), d(d) {}
+
+    ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right, String s) :
+            atype(atype), dtype(dtype), left(left), right(right), s(std::move(s)), l(0) {}
 };
 
 struct WithNode {

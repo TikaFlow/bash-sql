@@ -4,7 +4,7 @@
 
 #include "main.h"
 
-int COL_NUM = -1;
+int COL_NUM;
 
 int main(int argc, char *argv[]) {
     // parse command line options

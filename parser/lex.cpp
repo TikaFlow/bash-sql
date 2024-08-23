@@ -13,48 +13,46 @@ static Map<TokenType, String> DESC;
  * initialize the keyword map and description map
  */
 static void init_map() {
-    using Keyword = std::pair<String, TokenType>;
-    KEYWORD.insert(Keyword("select", T_SELECT));
-    KEYWORD.insert(Keyword("as", T_AS));
-    KEYWORD.insert(Keyword("from", T_FROM));
-    KEYWORD.insert(Keyword("where", T_WHERE));
-    KEYWORD.insert(Keyword("join", T_JOIN));
-    KEYWORD.insert(Keyword("on", T_ON));
-    KEYWORD.insert(Keyword("group", T_GROUP));
-    KEYWORD.insert(Keyword("by", T_BY));
-    KEYWORD.insert(Keyword("order", T_ORDER));
-    KEYWORD.insert(Keyword("asc", T_ASC));
-    KEYWORD.insert(Keyword("desc", T_DESC));
-    KEYWORD.insert(Keyword("in", T_IN));
-    KEYWORD.insert(Keyword("offset", T_OFFSET));
-    KEYWORD.insert(Keyword("limit", T_LIMIT));
-    KEYWORD.insert(Keyword("and", T_AND));
-    KEYWORD.insert(Keyword("or", T_OR));
-    KEYWORD.insert(Keyword("not", T_NOT));
-    KEYWORD.insert(Keyword("is", T_IS));
-    KEYWORD.insert(Keyword("null", T_NULL));
-    KEYWORD.insert(Keyword("with", T_WITH));
+    KEYWORD.insert({"select", T_SELECT});
+    KEYWORD.insert({"as", T_AS});
+    KEYWORD.insert({"from", T_FROM});
+    KEYWORD.insert({"where", T_WHERE});
+    KEYWORD.insert({"join", T_JOIN});
+    KEYWORD.insert({"on", T_ON});
+    KEYWORD.insert({"group", T_GROUP});
+    KEYWORD.insert({"by", T_BY});
+    KEYWORD.insert({"order", T_ORDER});
+    KEYWORD.insert({"asc", T_ASC});
+    KEYWORD.insert({"desc", T_DESC});
+    KEYWORD.insert({"in", T_IN});
+    KEYWORD.insert({"offset", T_OFFSET});
+    KEYWORD.insert({"limit", T_LIMIT});
+    KEYWORD.insert({"and", T_AND});
+    KEYWORD.insert({"or", T_OR});
+    KEYWORD.insert({"not", T_NOT});
+    KEYWORD.insert({"is", T_IS});
+    KEYWORD.insert({"null", T_NULL});
+    KEYWORD.insert({"with", T_WITH});
 
-    using Description = std::pair<TokenType, String>;
-    DESC.insert(Description(T_EOF, "EOF"));
-    DESC.insert(Description(T_PLUS, "+"));
-    DESC.insert(Description(T_MINUS, "-"));
-    DESC.insert(Description(T_STAR, "*"));
-    DESC.insert(Description(T_SLASH, "/"));
-    DESC.insert(Description(T_MOD, "%"));
-    DESC.insert(Description(T_EQ, "="));
-    DESC.insert(Description(T_NE1, "<>"));
-    DESC.insert(Description(T_NE2, "!="));
-    DESC.insert(Description(T_LT, "<"));
-    DESC.insert(Description(T_GT, ">"));
-    DESC.insert(Description(T_LE, "<="));
-    DESC.insert(Description(T_GE, ">="));
-    DESC.insert(Description(T_LPAREN, "("));
-    DESC.insert(Description(T_RPAREN, ")"));
-    DESC.insert(Description(T_COMMA, ","));
-    DESC.insert(Description(T_SEMICOLON, ";"));
-    DESC.insert(Description(T_INTEGER, "integer"));
-    DESC.insert(Description(T_REAL, "real number"));
+    DESC.insert({T_EOF, "EOF"});
+    DESC.insert({T_PLUS, "+"});
+    DESC.insert({T_MINUS, "-"});
+    DESC.insert({T_STAR, "*"});
+    DESC.insert({T_SLASH, "/"});
+    DESC.insert({T_MOD, "%"});
+    DESC.insert({T_EQ, "="});
+    DESC.insert({T_NE1, "<>"});
+    DESC.insert({T_NE2, "!="});
+    DESC.insert({T_LT, "<"});
+    DESC.insert({T_GT, ">"});
+    DESC.insert({T_LE, "<="});
+    DESC.insert({T_GE, ">="});
+    DESC.insert({T_LPAREN, "("});
+    DESC.insert({T_RPAREN, ")"});
+    DESC.insert({T_COMMA, ","});
+    DESC.insert({T_SEMICOLON, ";"});
+    DESC.insert({T_INTEGER, "integer"});
+    DESC.insert({T_REAL, "real number"});
 }
 
 /**
@@ -179,7 +177,7 @@ static String escape_string(String &str) {
  */
 static void check_keyword(Token *token) {
     String text = to_lower(token->text);
-    if (KEYWORD.count(text) > 0) {
+    if (KEYWORD.count(text)) {
         token->type = KEYWORD.at(text);
         token->text = text; // prevent mixed case
     }
@@ -190,7 +188,7 @@ static void check_keyword(Token *token) {
  * @param token the token to be described
  */
 static void describe(Token *token) {
-    if (DESC.count(token->type) > 0) {
+    if (DESC.count(token->type)) {
         token->text = DESC.at(token->type);
     }
 }
