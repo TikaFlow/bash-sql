@@ -15,13 +15,8 @@ static const Map<String, DataType> FUNCS = {
         {"upper",   D_STRING},
         {"trim",    D_STRING},
 };
-// column type, column index in the table(0-indexed), -1 if ambiguous
-using ColumnDesc = std::pair<DataType, int>;
-// column name, columns type
-using Table = Vector<std::pair<String, DataType>>;
-// maintain 3 lists for every select
+// maintain 2 lists for every select
 // columns of "from" set
-static Map<String, ColumnDesc> FROMS;
 // aliases, index
 static Map<String, int> ALIAS;
 // columns selected
@@ -102,7 +97,6 @@ static void init_std() {
  * prepare the table for parsing
  */
 static void stmt_start() {
-    FROMS.clear();
     ALIAS.clear();
     SELECTS = new Table();
 }
@@ -341,28 +335,125 @@ static Vector<SelectNode> *parse_select() {
 /**
  * parse FROM clause
  * @return pointer to FROM node
- * @todo implement
  */
-static FromNode *parse_from() {
-    return new FromNode();
+static Map<String, ColumnDesc> *parse_from() {
+    val from = new Map<String, ColumnDesc>();
+    var index = 0;
+    val alias = new Map<String, int>;
+
+    do {
+        val name = match(T_IDENTIFIER, "table name")->text;
+        String as;
+
+        if (!TABLES.count(name)) {
+            show_error("Table " + name + " not found");
+        }
+        alias->insert({name, 1}); // 1 is meaningless
+
+        if (peek()->type == T_AS) {
+            pop();
+            as = match(T_IDENTIFIER, "alias name")->text;
+            if (alias->count(as)) {
+                show_error("Duplicate alias name: " + as);
+            }
+            alias->insert({as, 1});
+        }
+
+        val table = TABLES.at(name);
+        for (val &col: *table) {
+            from->insert({name + "." + col.first, {col.second, index}});
+            from->insert({as + "." + col.first, {col.second, index}});
+            if (from->count(col.first)) {
+                from->insert({col.first, {col.second, -1}});
+            } else {
+                from->insert({col.first, {col.second, index}});
+            }
+            index++;
+        }
+    } while (pop()->type == T_COMMA);
+    unpop();
+
+    return from;
 }
 
 /**
  * generate from node of "from std", when no from clause, use std as default
  * @return pointer to FROM node
+ */
+static Map<String, ColumnDesc> *from_std() {
+    val from = new Map<String, ColumnDesc>();
+    var index = 0;
+
+    val table = TABLES.at("std");
+    for (val &col: *table) {
+        // std.col1 is always valid because table name are unique and col1 is unique in table std
+        from->insert({"std." + col.first, {col.second, index}});
+        if (from->count(col.first)) {
+            // if col1 is already in the map, insert with -1 which means it's ambiguous
+            from->insert({col.first, {col.second, -1}});
+        } else {
+            // if col1 is unique for now, then has the same index with std.col1
+            from->insert({col.first, {col.second, index}});
+        }
+        index++;
+    }
+
+    return from;
+}
+
+/**
+ * check if the column is valid
+ * and repair types if needed
+ * @param from FROM table
+ * @param node the node containing the column
  * @todo implement
  */
-static FromNode *from_std() {
-    return new FromNode();
+static void check_column(Map<String, ColumnDesc> *from, ASTNode *node) {
+    if (!node) {
+        return;
+    }
 }
 
 /**
  * check if the select columns are valid
- * and repair types if needed
- * @param from FROM clause
+ * @param from FROM table
  * @param select SELECT clause
  */
-static void validate_select(FromNode *from, Vector<SelectNode> *select) {}
+static void validate_select(Map<String, ColumnDesc> *from, Vector<SelectNode> *select) {
+    // assert(select != null); // select would never be null
+    for (val &node: *select) {
+        check_column(from, node.col);
+    }
+}
+
+/**
+ * check if the WHERE columns are valid
+ * @param from FROM table
+ * @param where WHERE clause
+ */
+static void validate_where(Map<String, ColumnDesc> *from, ASTNode *where) {
+    check_column(from, where);
+}
+
+/**
+ * parse GROUP BY clause
+ * @return vector of GROUP BY column expression
+ */
+static Vector<int> *parse_group_by() {
+    val node = new Vector<int>();
+    match(T_BY, "by");
+
+    do {
+        val index = (int) match(T_INTEGER, "column index")->integer - 1;
+        if (index < 0) {
+            show_error("Column index must be greater than 0");
+        }
+        node->push_back(index);
+    } while (pop()->type == T_COMMA);
+    unpop();
+
+    return node;
+}
 
 /**
  * get column index from SELECT clause, which starts from 0
@@ -466,22 +557,18 @@ static SelectStatement *parse_select_stmt(const String &name, Vector<WithNode> *
     } else {
         stmt->from = from_std();
     }
-    validate_select(stmt->from, stmt->select);
-    if (!name.empty()) {
-        // add to table map
-        TABLES.insert({name, SELECTS});
-    }
 
     if (peek()->type == T_WHERE) {
         pop();
-        // TODO where clause
-        // stmt->where =
+        stmt->where = expression();
+        if (stmt->where->dtype != D_BOOL) {
+            show_error("WHERE clause must a boolean expression");
+        }
     }
 
     if (peek()->type == T_GROUP) {
         pop();
-        // TODO group by clause
-        // stmt->group =
+        stmt->group = parse_group_by();
     }
 
     if (peek()->type == T_ORDER) {
@@ -492,6 +579,13 @@ static SelectStatement *parse_select_stmt(const String &name, Vector<WithNode> *
     if (peek()->type == T_LIMIT) {
         pop();
         stmt->limit = parse_limit();
+    }
+
+    validate_select(stmt->from, stmt->select);
+    validate_where(stmt->from, stmt->where);
+    if (!name.empty()) {
+        // add to table map
+        TABLES.insert({name, SELECTS});
     }
 
     return stmt;

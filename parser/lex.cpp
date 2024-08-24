@@ -17,8 +17,6 @@ static void init_map() {
     KEYWORD.insert({"as", T_AS});
     KEYWORD.insert({"from", T_FROM});
     KEYWORD.insert({"where", T_WHERE});
-    KEYWORD.insert({"join", T_JOIN});
-    KEYWORD.insert({"on", T_ON});
     KEYWORD.insert({"group", T_GROUP});
     KEYWORD.insert({"by", T_BY});
     KEYWORD.insert({"order", T_ORDER});
