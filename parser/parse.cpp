@@ -181,7 +181,7 @@ static ASTNode *primary() {
     String name;
     ASTNode *node;
 
-    var tk = peek();
+    var tk = pop();
     switch (tk->type) {
         case T_INTEGER:
             node = new ASTNode(A_LITERAL, D_INT, null, null, tk->integer);
@@ -193,16 +193,14 @@ static ASTNode *primary() {
             node = new ASTNode(A_LITERAL, D_STRING, null, null, tk->text);
             break;
         case T_IDENTIFIER:
-            name = pop()->text;
+            name = tk->text;
             if (peek()->type == T_LPAREN) {
                 node = function_call(name);
             } else {
-                // todo check if the column exists and get the type
                 node = new ASTNode(A_COLUMN, D_NONE, null, null, name);
             }
             break;
         case T_LPAREN:
-            pop();
             node = expression();
             match(T_RPAREN, "close parenthesis");
             break;
@@ -216,18 +214,20 @@ static ASTNode *primary() {
 
 /**
  * parse factor in expression
- * @note factor ::= ["+" | "-"] primary
+ * @note factor ::= ["-"] primary | "NOT" primary
  * @return ast node of the factor
  */
 static ASTNode *factor() {
     val tk = peek();
-    if (tk->type == T_PLUS || tk->type == T_MINUS) {
+    if (tk->type == T_MINUS || tk->type == T_NOT) {
         pop();
     }
     var left = primary();
 
     if (tk->type == T_MINUS) {
-        left = new ASTNode(A_NEGATE, left->dtype, left, null);
+        left = new ASTNode(A_NEGATE, D_NUMBER, left, null);
+    } else if (tk->type == T_NOT) {
+        left = new ASTNode(A_NOT, D_BOOL, left, null);
     }
     return left;
 }
@@ -255,11 +255,11 @@ static ASTNode *term() {
 }
 
 /**
- * parse column expression in select clause
- * @note expression ::= term { ( "+" | "-" ) term }
- * @return ast node of the column expression
+ * parse arithmetic expression
+ * @note arithmetic_expression ::= term { ( "+" | "-" ) term }
+ * @return ast node of the arithmetic expression
  */
-static ASTNode *expression() {
+static ASTNode *arithmetic_expression() {
     var left = term();
     var tk = peek();
 
@@ -273,6 +273,158 @@ static ASTNode *expression() {
     }
 
     return left;
+}
+
+/**
+ * parse list of expressions, every expression should be literal
+ * @note in_list ::= expression_list ::= "(" expression {"," expression} ")"
+ * @param exp expression to compare with
+ * @param is_in true if it's "in", false if it's "not in"
+ * @return ast node of the "in" list
+ */
+static ASTNode *in_list(ASTNode *exp, bool is_in) {
+    match(T_LPAREN, "open parenthesis");
+    // exp in (a, b) ==> exp = a or exp = b
+    // exp not in (a, b) ==> exp != a and exp != b
+    val atype1 = is_in ? A_OR : A_AND;
+    val atype2 = is_in ? A_EQ : A_NE;
+
+    var value = expression();
+    if (value->atype != A_LITERAL) {
+        show_error("Expected literal list");
+    }
+
+    var left = new ASTNode(atype2, D_BOOL, exp, value);
+    var tk = peek();
+
+    while (tk && tk->type == T_COMMA) {
+        pop();
+
+        value = expression();
+        if (value->atype != A_LITERAL) {
+            show_error("Expected literal list");
+        }
+
+        val right = new ASTNode(atype2, D_BOOL, exp, value);
+        left = new ASTNode(atype1, D_BOOL, left, right);
+        tk = peek();
+    }
+
+    match(T_RPAREN, "close parenthesis");
+    return left;
+}
+
+/**
+ * parse logical factor in expression
+ * @note logical_factor ::= arithmetic_expression [comparison_operator arithmetic_expression]
+                            | arithmetic_expression ["NOT"] "IN" in_list
+                            | arithmetic_expression ["IS" ["NOT"] "NULL"]
+        comparison_operator ::= ">" | "<" | ">=" | "<=" | "!=" | "<>"
+ * @return ast node of the logical factor
+ */
+static ASTNode *logical_factor() {
+    var left = arithmetic_expression();
+    var tk = peek();
+    if (tk->type >= T_EQ && tk->type <= T_GE) {
+        pop();
+        val right = arithmetic_expression();
+        ASTType atype;
+        switch (tk->type) {
+            case T_EQ:
+                atype = A_EQ;
+                break;
+            case T_NE1:
+            case T_NE2:
+                atype = A_NE;
+                break;
+            case T_LT:
+                atype = A_LT;
+                break;
+            case T_GT:
+                atype = A_GT;
+                break;
+            case T_LE:
+                atype = A_LE;
+                break;
+            case T_GE:
+                atype = A_GE;
+                break;
+            default:
+                break;
+        }
+
+        left = new ASTNode(atype, D_BOOL, left, right);
+    } else if (tk->type == T_NOT || tk->type == T_IN) {
+        pop();
+
+        val is_in = tk->type == T_IN;
+        if (!is_in) {
+            match(T_IN, "in");
+        }
+
+        left = in_list(left, is_in);
+    } else if (tk->type == T_IS) {
+        pop();
+
+        var atype = A_ISNULL;
+        if (peek()->type == T_NOT) {
+            pop();
+            atype = A_NOTNULL;
+        }
+
+        match(T_NULL, "null");
+
+        left = new ASTNode(atype, D_BOOL, left, null);
+    }
+
+    return left;
+}
+
+/**
+ * parse logical term in expression
+ * @note logical_term ::= logical_factor { "AND" logical_factor }
+ * @return ast node of the logical term
+ */
+static ASTNode *logical_term() {
+    var left = logical_factor();
+    var tk = peek();
+
+    while (tk && tk->type == T_AND) {
+        pop();
+        val right = logical_factor();
+        left = new ASTNode(A_AND, D_BOOL, left, right);
+        tk = peek();
+    }
+
+    return left;
+}
+
+/**
+ * parse logical expression
+ * @note logical_expression ::= logical_term { "OR" logical_term }
+ * @return ast node of the logical expression
+ */
+static ASTNode *logical_expression() {
+    var left = logical_term();
+    var tk = peek();
+
+    while (tk && tk->type == T_OR) {
+        pop();
+        val right = logical_term();
+        left = new ASTNode(A_OR, D_BOOL, left, right);
+        tk = peek();
+    }
+
+    return left;
+}
+
+/**
+ * parse column expression in select clause
+ * @note expression ::= logical_expression
+ * @return ast node of the column expression
+ */
+static ASTNode *expression() {
+    return logical_expression();
 }
 
 /**
@@ -307,7 +459,7 @@ static Vector<SelectNode> *parse_select() {
     do {
         if (peek()->type == T_STAR) {
             pop();
-            expand_star(select);
+            expand_star(select); // we cannot get all columns now, so we need to expand it later
             if (pop()->type == T_COMMA) {
                 continue;
             }
@@ -362,7 +514,7 @@ static Map<String, ColumnDesc> *parse_from() {
         val table = TABLES.at(name);
         for (val &col: *table) {
             from->insert({name + "." + col.first, {col.second, index}});
-            from->insert({as + "." + col.first, {col.second, index}});
+            from->insert({as + (as.empty() ? "" : ".") + col.first, {col.second, index}});
             if (from->count(col.first)) {
                 from->insert({col.first, {col.second, -1}});
             } else {
@@ -406,12 +558,20 @@ static Map<String, ColumnDesc> *from_std() {
  * and repair types if needed
  * @param from FROM table
  * @param node the node containing the column
- * @todo implement
  */
 static void check_column(Map<String, ColumnDesc> *from, ASTNode *node) {
     if (!node) {
         return;
     }
+
+    if (node->left) {
+        check_column(from, node->left);
+    }
+    if (node->right) {
+        check_column(from, node->right);
+    }
+
+    // todo check self, column exists? type match? etc
 }
 
 /**
