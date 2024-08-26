@@ -39,15 +39,15 @@ typedef enum {
 
 typedef enum {
     A_FUNC_CALL, A_PARAM, A_LITERAL, A_COLUMN,
-    A_ADD, A_SUB, A_NEGATE, A_MUL, A_DIV, A_MOD,
-    A_EQ, A_NE, A_LT, A_GT, A_LE, A_GE,
-    A_AND, A_OR, A_NOT, A_ISNULL, A_NOTNULL,
+    A_ADD, A_SUB, A_MUL, A_DIV, A_MOD,
+    A_EQ, A_NE, A_LT, A_GT, A_LE, A_GE, A_AND, A_OR,
+    A_NEGATE, A_NOT, A_ISNULL, A_NOTNULL, // unary operator
 } ASTType;
 
 // column type, column index in the table(0-indexed), -1 if ambiguous
-using ColumnDesc = std::pair<DataType, int>;
+using ColumnDesc = Pair<DataType, int>;
 // column name, columns type
-using Table = Vector<std::pair<String, DataType>>;
+using Table = Vector<Pair<String, DataType>>;
 
 struct Token {
     TokenType type;
@@ -92,7 +92,7 @@ struct ASTNode {
         long l;
         double d;
         bool b;
-    };
+    }; // value
     String s;
 
     ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right) :

@@ -12,7 +12,7 @@ void print_data(const Vector<Vector<String>> &data, const ProgramOptions &option
             if (col_ws.size() <= i) {
                 col_ws.push_back(0);
             }
-            col_ws[i] = std::max(col_ws[i], static_cast<int>(row[i].size()));
+            col_ws[i] = std::max(col_ws[i], (int) (row[i].size()));
         }
     }
 

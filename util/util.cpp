@@ -85,4 +85,18 @@ namespace util {
         String content{(std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>()};
         return trim(content);
     }
+
+    bool is_integer(const String &str) {
+        std::istringstream iss(str);
+        long value;
+        iss >> value;
+        return iss.eof() && !iss.fail();
+    }
+
+    bool is_double(const String &str) {
+        std::istringstream iss(str);
+        double value;
+        iss >> value;
+        return iss.eof() && !iss.fail();
+    }
 }

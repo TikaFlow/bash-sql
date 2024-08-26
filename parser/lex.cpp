@@ -239,7 +239,7 @@ static void scan_number(Token *token) {
     if (dot) {
         token->real = stod(str);
     } else {
-        token->integer = stoi(str);
+        token->integer = stol(str);
     }
 }
 

@@ -8,7 +8,7 @@
 static int INDEX = 0;
 // token vector from lexer
 static const Vector<Token *> *TOKENS;
-// build-in functions
+// build-in functions, <name, type>
 static const Map<String, DataType> FUNCS = {
         {"sub_str", D_STRING},
         {"lower",   D_STRING},
@@ -102,26 +102,94 @@ static void stmt_start() {
 }
 
 /**
+ * cast a string literal node to a number node
+ * @param node node to be cast
+ */
+static void cast_string(ASTNode *node) {
+    if (node->atype != A_LITERAL) {
+        return;
+    }
+
+    val &str = node->s;
+    if (is_integer(str)) {
+        val value = stol(str);
+        node->l = value;
+        node->dtype = D_INT;
+    } else if (is_double(str)) {
+        val value = stod(str);
+        node->d = value;
+        node->dtype = D_REAL;
+    } else {
+        show_error("cannot convert string to number: " + str);
+    }
+}
+
+/**
  * compatible data type of two sides
  * @param left left data type
  * @param right right data type
  * @return compatible data type
  */
-static DataType cast_type(ASTNode *left, ASTNode *right, ASTType op_type) {
-    DataType left_type = left->dtype, right_type = right->dtype;
+static DataType repair_type(ASTNode *left, ASTNode *right, ASTType op_type) {
+    if (op_type >= A_ADD) {
+        if (!left) {
+            show_error("missing required operands");
+        }
+        if (op_type <= A_OR && !right) {
+            show_error("missing required operands");
+        }
+    }
 
-    if (op_type >= A_ADD && op_type <= A_MOD) { // mathematical operator
-        if (left_type == D_STRING || right_type == D_STRING || left_type == D_BOOL || right_type == D_BOOL) {
+    DataType left_type = left->dtype, right_type = right ? right->dtype : D_NONE;
+
+    if (op_type == A_NEGATE || (op_type >= A_ADD && op_type <= A_MOD)) { // mathematical operator
+        // if one of them is string literal, then we try to convert it to integer/real
+        if (left_type == D_STRING) {
+            cast_string(left);
+        }
+        if (right_type == D_STRING) {
+            cast_string(right);
+        }
+
+        // get type again because they may have been changed
+        left_type = left->dtype, right_type = right ? right->dtype : D_NONE;
+
+        if (op_type == A_NEGATE) {
+            if (left_type == D_BOOL) {
+                show_error("incompatible operands of negate");
+            }
+
+            return left_type;
+        }
+
+        if (left_type == D_BOOL || right_type == D_BOOL) {
             show_error("incompatible operands");
         }
 
+        if (op_type == A_MOD) {
+            if (left_type != D_INT || right_type != D_INT) {
+                show_error("incompatible operands of modulo operator");
+            }
+        }
+
+        // if there is a determined D_REAL, then we get D_REAL
         if (left_type == D_REAL || right_type == D_REAL) {
             return D_REAL;
         }
 
-        return D_INT;
-    } else if (op_type == A_EQ || op_type == A_OR) { // logic operator
-        if (left_type == D_BOOL && right_type == D_BOOL) {
+        // if both are D_INT, then we get D_INT
+        if (left_type == D_INT && right_type == D_INT) {
+            return D_INT;
+        }
+
+        return D_NUMBER;
+    } else if (op_type >= A_EQ && op_type <= A_OR) { // binary logic operator
+        if (left_type == D_BOOL || right_type == D_BOOL) {
+            show_error("incompatible operands");
+        }
+        return D_BOOL;
+    } else if (op_type >= A_NOT && op_type <= A_NOTNULL) { // unary logic operator
+        if (left_type == D_BOOL) {
             return D_BOOL;
         }
         show_error("incompatible operands");
@@ -135,13 +203,13 @@ static DataType cast_type(ASTNode *left, ASTNode *right, ASTType op_type) {
  * @param str string to resolve
  * @return pair of table name and column name
  */
-static std::pair<String, String> *resolve_column(const String &str) {
+static Pair<String, String> *resolve_column(const String &str) {
     val pos = str.find('.');
 
     if (pos == npos) {
-        return new std::pair<String, String>{"", str};
+        return new Pair<String, String>{"", str};
     }
-    return new std::pair<String, String>{str.substr(0, pos), str.substr(pos + 1)};
+    return new Pair<String, String>{str.substr(0, pos), str.substr(pos + 1)};
 }
 
 /**
@@ -246,8 +314,7 @@ static ASTNode *term() {
         val right = factor();
         val atype = tk->type == T_STAR ? A_MUL :
                     (tk->type == T_SLASH ? A_DIV : A_MOD);
-        val dtype = cast_type(left, right, atype);
-        left = new ASTNode(atype, dtype, left, right);
+        left = new ASTNode(atype, D_NUMBER, left, right);
         tk = peek();
     }
 
@@ -267,8 +334,7 @@ static ASTNode *arithmetic_expression() {
         pop();
         val right = term();
         val atype = tk->type == T_PLUS ? A_ADD : A_SUB;
-        val dtype = cast_type(left, right, atype);
-        left = new ASTNode(atype, dtype, left, right);
+        left = new ASTNode(atype, D_NUMBER, left, right);
         tk = peek();
     }
 
@@ -554,24 +620,164 @@ static Map<String, ColumnDesc> *from_std() {
 }
 
 /**
+ * release the memory of AST node
+ * @param node the node to release
+ */
+static inline void release_node(ASTNode **node) {
+    if (*node) {
+        val temp = *node;
+        *node = null;
+        delete temp;
+    }
+}
+
+/**
+ * fold constant expression
+ * @param node the node to fold
+ */
+static void constant_fold(ASTNode *node) {
+    if (node->atype < A_ADD) {
+        return;
+    }
+
+    if (node->left->atype != A_LITERAL) {
+        return;
+    }
+
+    if (node->atype <= A_OR && node->right->atype != A_LITERAL) {
+        return;
+    }
+
+    // till now, left and right(if there has) are both literal, and string literal has been converted
+    double lv = node->left->dtype == D_INT ? (double) node->left->l : node->left->d;
+    double rv = node->right->dtype == D_INT ? (double) node->right->l : node->right->d;
+    long ll = node->left->l;
+    long rl = node->right->l;
+
+    long dl = 1;
+    double dd = 1.0;
+    if (node->dtype == D_INT) {
+        dl = node->left->l - node->right->l;
+    } else {
+        dd = lv - rv;
+    }
+    dd = (double) dl * dd;
+    switch (node->atype) {
+        /*
+         * A_ADD, A_SUB, A_MUL, A_DIV, A_MOD,
+         * A_EQ, A_NE, A_LT, A_GT, A_LE, A_GE, A_AND, A_OR,
+         * A_NEGATE, A_NOT, A_ISNULL, A_NOTNULL,
+         */
+        case A_ADD:
+            if (node->dtype == D_INT) {
+                node->l = node->left->l + node->right->l;
+            } else {
+                node->d = lv + rv;
+            }
+            break;
+        case A_SUB:
+            if (node->dtype == D_INT) {
+                node->l = node->left->l - node->right->l;
+            } else {
+                node->d = lv - rv;
+            }
+            break;
+        case A_MUL:
+            if (node->dtype == D_INT) {
+                node->l = node->left->l * node->right->l;
+            } else {
+                node->d = lv * rv;
+            }
+            break;
+        case A_DIV:
+            if (node->dtype == D_INT) {
+                node->l = node->left->l / node->right->l;
+            } else {
+                node->d = lv / rv;
+            }
+            break;
+        case A_MOD:
+            node->l = node->left->l % node->right->l;
+            break;
+        case A_EQ:
+            node->b = dd == 0;
+            break;
+        case A_NE:
+            node->b = dd != 0;
+            break;
+        case A_LT:
+            node->b = dd < 0;
+            break;
+        case A_GT:
+            node->b = dd > 0;
+            break;
+        case A_LE:
+            node->b = dd <= 0;
+            break;
+        case A_GE:
+            node->b = dd >= 0;
+            break;
+        case A_AND:
+            node->b = node->left->b && node->right->b;
+            break;
+        case A_OR:
+            node->b = node->left->b || node->right->b;
+            break;
+        case A_NEGATE:
+            if (node->dtype == D_INT) {
+                node->l = -node->left->l;
+            } else { // then must be D_REAL
+                node->d = -node->left->d;
+            }
+            break;
+        case A_NOT:
+            node->b = !node->left->b;
+            break;
+        case A_ISNULL:
+            // only string literal can be null
+            node->b = node->left->dtype == D_STRING && node->left->s.empty();
+            break;
+        case A_NOTNULL:
+            node->b = node->left->dtype != D_STRING || !node->left->s.empty();
+            break;
+        default:
+            break;
+    }
+
+    release_node(&node->left);
+    release_node(&node->right);
+    node->atype = A_LITERAL; // now node itself is a literal
+}
+
+/**
  * check if the column is valid
  * and repair types if needed
  * @param from FROM table
  * @param node the node containing the column
  */
-static void check_column(Map<String, ColumnDesc> *from, ASTNode *node) {
+static void check_ast(Map<String, ColumnDesc> *from, ASTNode *node) {
     if (!node) {
         return;
     }
 
     if (node->left) {
-        check_column(from, node->left);
+        check_ast(from, node->left);
     }
     if (node->right) {
-        check_column(from, node->right);
+        check_ast(from, node->right);
     }
 
-    // todo check self, column exists? type match? etc
+    if (node->atype == A_COLUMN) { // if it is a column
+        if (!from->count(node->s)) {
+            show_error("Column not found: " + node->s);
+        }
+        node->dtype = from->at(node->s).first; // repair type
+    } else if (node->atype >= A_ADD) {
+        node->dtype = repair_type(node->left, node->right, node->atype);
+    }
+
+    // optimize the ast
+    constant_fold(node);
 }
 
 /**
@@ -580,9 +786,10 @@ static void check_column(Map<String, ColumnDesc> *from, ASTNode *node) {
  * @param select SELECT clause
  */
 static void validate_select(Map<String, ColumnDesc> *from, Vector<SelectNode> *select) {
+    // expand *
     // assert(select != null); // select would never be null
     for (val &node: *select) {
-        check_column(from, node.col);
+        check_ast(from, node.col);
     }
 }
 
@@ -592,7 +799,20 @@ static void validate_select(Map<String, ColumnDesc> *from, Vector<SelectNode> *s
  * @param where WHERE clause
  */
 static void validate_where(Map<String, ColumnDesc> *from, ASTNode *where) {
-    check_column(from, where);
+    check_ast(from, where);
+    if (where->dtype != D_BOOL) {
+        show_error("WHERE clause must a boolean expression");
+    }
+}
+
+/**
+ * check if the statement is valid
+ * @param stmt the statement to be checked
+ */
+static void validate_stmt(SelectStatement *stmt) {
+    validate_select(stmt->from, stmt->select);
+    validate_where(stmt->from, stmt->where);
+    // validate group_by? I don't know how to do that yet
 }
 
 /**
@@ -721,9 +941,6 @@ static SelectStatement *parse_select_stmt(const String &name, Vector<WithNode> *
     if (peek()->type == T_WHERE) {
         pop();
         stmt->where = expression();
-        if (stmt->where->dtype != D_BOOL) {
-            show_error("WHERE clause must a boolean expression");
-        }
     }
 
     if (peek()->type == T_GROUP) {
@@ -741,8 +958,7 @@ static SelectStatement *parse_select_stmt(const String &name, Vector<WithNode> *
         stmt->limit = parse_limit();
     }
 
-    validate_select(stmt->from, stmt->select);
-    validate_where(stmt->from, stmt->where);
+    validate_stmt(stmt);
     if (!name.empty()) {
         // add to table map
         TABLES.insert({name, SELECTS});

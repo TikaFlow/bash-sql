@@ -32,6 +32,10 @@ namespace util {
     void show_warn(const String &msg);
 
     String readFileString(const String &filename);
+
+    bool is_integer(const String &str);
+
+    bool is_double(const String &str);
 }
 
 using namespace util;

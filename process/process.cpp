@@ -28,7 +28,7 @@ int get_col_count(const ProgramOptions &options) {
     val col_count = options.delimiter == 0
                     ? split_string_by_spaces(first_line).size()
                     : split_string(first_line, options.delimiter).size();
-    return static_cast<int>(col_count);
+    return (int) col_count;
 }
 
 Vector<String> exec_select(const Vector<String> &title, const Vector<String> &row,
@@ -124,8 +124,8 @@ Vector<String> handle_title(const Vector<String> &title, const String &select) {
     return new_title;
 }
 
-Vector<std::pair<int, bool>> check_orders(const Vector<String> &data, const Vector<String> &orders) {
-    Vector<std::pair<int, bool>> sort_order;
+Vector<Pair<int, bool>> check_orders(const Vector<String> &data, const Vector<String> &orders) {
+    Vector<Pair<int, bool>> sort_order;
     for (val &order: orders) {
         val cols = split_string_by_spaces(trim(order));
         if (cols.size() > 2) {
