@@ -250,10 +250,20 @@ static void scan_number(Token *token) {
 static void scan_identifier(Token *token) {
     char c;
     val start = INDEX - 1;
+
     while ((c = next()) != EOF && (c == '_' || isalpha(c) || isdigit(c)));
+    if (c == '.') {
+        c = next();
+        if (c != '*') {
+            prev(c);
+            while ((c = next()) != EOF && (c == '_' || isalpha(c) || isdigit(c)));
+            prev(c);
+        }
+    } else {
+        prev(c);
+    }
 
     token->type = T_IDENTIFIER;
-    prev(c);
     token->text = SQL.substr(start, INDEX - start);
 
     check_keyword(token);
@@ -334,7 +344,7 @@ static Token *scan() {
                 scan_number(token);
                 break;
             }
-            if (c == '_' || isalpha(c)) {
+            if (isalpha(c)) {
                 scan_identifier(token);
                 break;
             }

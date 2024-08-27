@@ -104,6 +104,9 @@ struct ASTNode {
     ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right, double d) :
             atype(atype), dtype(dtype), left(left), right(right), d(d) {}
 
+    ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right, bool b) :
+            atype(atype), dtype(dtype), left(left), right(right), b(b) {}
+
     ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right, String s) :
             atype(atype), dtype(dtype), left(left), right(right), s(std::move(s)), l(0) {}
 };

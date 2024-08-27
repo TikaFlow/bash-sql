@@ -15,12 +15,13 @@ static const Map<String, DataType> FUNCS = {
         {"upper",   D_STRING},
         {"trim",    D_STRING},
 };
-// maintain 2 lists for every select
-// columns of "from" set
-// aliases, index
+// maintain 3 lists for every select
+// selected alias: <aliases, index>
 static Map<String, int> ALIAS;
 // columns selected
 static Table *SELECTS;
+// table used: <alias, origin table>
+static Map<String, String> TABLES_USED;
 // all tables
 static Map<String, Table *> TABLES;
 // init column number, 32 by default
@@ -30,11 +31,15 @@ static ASTNode *expression();
 
 /**
  * peek one token
+ * @param accept_eof true if return null is accepted
  * @return token, null if no more token
  */
-static Token *peek() {
+static Token *peek(bool accept_eof = false) {
     static val size = TOKENS->size();
     if (INDEX >= size) {
+        if (!accept_eof) {
+            show_error("Unexpected end of sql");
+        }
         return null;
     }
     return TOKENS->at(INDEX);
@@ -42,10 +47,11 @@ static Token *peek() {
 
 /**
  * pop one token
+ * @param accept_eof true if return null is accepted
  * @return token, null if no more token
  */
-static Token *pop() {
-    Token *token = peek();
+static Token *pop(bool accept_eof = false) {
+    Token *token = peek(accept_eof);
     if (token) {
         INDEX++;
     }
@@ -68,7 +74,7 @@ static void unpop() {
  * @return the expected token, return value would never be null
  */
 static Token *match(TokenType type, const String &what) {
-    Token *token = pop();
+    Token *token = pop(true);
     if (token && token->type == type) {
         return token;
     } else {
@@ -99,6 +105,7 @@ static void init_std() {
 static void stmt_start() {
     ALIAS.clear();
     SELECTS = new Table();
+    TABLES_USED.clear();
 }
 
 /**
@@ -227,12 +234,10 @@ static ASTNode *function_call(const String &name) {
 
     pop(); // pop "("
     if (peek()->type != T_RPAREN) {
-        param = expression();
-        var tk = peek();
-        while (tk->type == T_COMMA) {
-            pop();
+        do {
+            param = expression();
             left = new ASTNode(A_PARAM, D_NONE, left, param);
-        }
+        } while (pop()->type == T_COMMA);
     }
     match(T_RPAREN, "close parenthesis");
     node = new ASTNode(A_FUNC_CALL, FUNCS.at(func), left, null);
@@ -309,7 +314,7 @@ static ASTNode *term() {
     var left = factor();
     var tk = peek();
 
-    while (tk && (tk->type == T_STAR || tk->type == T_SLASH || tk->type == T_MOD)) {
+    while (tk->type == T_STAR || tk->type == T_SLASH || tk->type == T_MOD) {
         pop();
         val right = factor();
         val atype = tk->type == T_STAR ? A_MUL :
@@ -330,7 +335,7 @@ static ASTNode *arithmetic_expression() {
     var left = term();
     var tk = peek();
 
-    while (tk && (tk->type == T_PLUS || tk->type == T_MINUS)) {
+    while (tk->type == T_PLUS || tk->type == T_MINUS) {
         pop();
         val right = term();
         val atype = tk->type == T_PLUS ? A_ADD : A_SUB;
@@ -354,27 +359,18 @@ static ASTNode *in_list(ASTNode *exp, bool is_in) {
     // exp not in (a, b) ==> exp != a and exp != b
     val atype1 = is_in ? A_OR : A_AND;
     val atype2 = is_in ? A_EQ : A_NE;
+    var left = new ASTNode(A_LITERAL, D_BOOL, null, null, !is_in);
 
-    var value = expression();
-    if (value->atype != A_LITERAL) {
-        show_error("Expected literal list");
-    }
-
-    var left = new ASTNode(atype2, D_BOOL, exp, value);
-    var tk = peek();
-
-    while (tk && tk->type == T_COMMA) {
-        pop();
-
-        value = expression();
+    do {
+        var value = expression();
         if (value->atype != A_LITERAL) {
-            show_error("Expected literal list");
+            show_error("Expected literal in list");
         }
 
         val right = new ASTNode(atype2, D_BOOL, exp, value);
         left = new ASTNode(atype1, D_BOOL, left, right);
-        tk = peek();
-    }
+    } while (pop()->type == T_COMMA);
+    unpop();
 
     match(T_RPAREN, "close parenthesis");
     return left;
@@ -390,9 +386,8 @@ static ASTNode *in_list(ASTNode *exp, bool is_in) {
  */
 static ASTNode *logical_factor() {
     var left = arithmetic_expression();
-    var tk = peek();
+    var tk = pop();
     if (tk->type >= T_EQ && tk->type <= T_GE) {
-        pop();
         val right = arithmetic_expression();
         ASTType atype;
         switch (tk->type) {
@@ -421,7 +416,6 @@ static ASTNode *logical_factor() {
 
         left = new ASTNode(atype, D_BOOL, left, right);
     } else if (tk->type == T_NOT || tk->type == T_IN) {
-        pop();
 
         val is_in = tk->type == T_IN;
         if (!is_in) {
@@ -430,17 +424,17 @@ static ASTNode *logical_factor() {
 
         left = in_list(left, is_in);
     } else if (tk->type == T_IS) {
-        pop();
 
         var atype = A_ISNULL;
         if (peek()->type == T_NOT) {
             pop();
             atype = A_NOTNULL;
         }
-
         match(T_NULL, "null");
 
         left = new ASTNode(atype, D_BOOL, left, null);
+    } else {
+        unpop();
     }
 
     return left;
@@ -453,14 +447,12 @@ static ASTNode *logical_factor() {
  */
 static ASTNode *logical_term() {
     var left = logical_factor();
-    var tk = peek();
 
-    while (tk && tk->type == T_AND) {
-        pop();
+    while (pop()->type == T_AND) {
         val right = logical_factor();
         left = new ASTNode(A_AND, D_BOOL, left, right);
-        tk = peek();
     }
+    unpop();
 
     return left;
 }
@@ -472,14 +464,12 @@ static ASTNode *logical_term() {
  */
 static ASTNode *logical_expression() {
     var left = logical_term();
-    var tk = peek();
 
-    while (tk && tk->type == T_OR) {
-        pop();
+    while (pop()->type == T_OR) {
         val right = logical_term();
         left = new ASTNode(A_OR, D_BOOL, left, right);
-        tk = peek();
     }
+    unpop();
 
     return left;
 }
@@ -496,10 +486,34 @@ static ASTNode *expression() {
 /**
  * expand "*" to all columns in the table
  * @param select vector of select node
- * @todo implement
+ * @param i insert at index i
+ * @param table table name
+ * @return column count after expansion
  */
-static void expand_star(Vector<SelectNode> *select) {
+static int expand_star(Vector<SelectNode> *select, int i, const String &table) {
+    int count = 0;
+    var tables = Map<String, Table *>();
 
+    if (table.empty()) { // *
+        for (val &t: TABLES_USED) {
+            tables.insert({t.first, TABLES[t.second]});
+        }
+    } else { // t.*
+        tables.insert({table, TABLES[table]});
+    }
+
+    select->erase(select->begin() + i);
+    for (auto &t: tables) {
+        val cols = t.second;
+        for (auto &col: *cols) {
+            val name = col.first;
+            val dtype = col.second;
+            val node = new ASTNode(A_COLUMN, dtype, null, null, name);
+            select->insert(select->begin() + i + count++, {node, name});
+        }
+    }
+
+    return count;
 }
 
 /**
@@ -512,8 +526,7 @@ static void add_alias(const String &alias) {
         show_error("Duplicate alias name: " + name);
     }
 
-    ALIAS.insert({name, SELECTS->size()});
-    SELECTS->emplace_back(name, D_NONE);
+    ALIAS.insert({name, 1}); // 1 is dummy
 }
 
 /**
@@ -523,25 +536,31 @@ static void add_alias(const String &alias) {
 static Vector<SelectNode> *parse_select() {
     val select = new Vector<SelectNode>();
     do {
+        String as;
         if (peek()->type == T_STAR) {
             pop();
-            expand_star(select); // we cannot get all columns now, so we need to expand it later
-            if (pop()->type == T_COMMA) {
-                continue;
-            }
-            break;
+            val col = new ASTNode(A_COLUMN, D_NONE, null, null, String("*"));
+            // select *
+            select->push_back({col, as});
+            continue;
         }
 
         val col = expression();
-        String as;
         if (col->atype == A_COLUMN) {
-            as = resolve_column(col->s)->second;
+            val col_name = resolve_column(col->s)->second;
+            if (col_name != "*") {
+                as = col_name;
+            } else {
+                // select t.*
+                select->push_back({col, as});
+                continue;
+            }
         }
         if (peek()->type == T_AS) {
             pop();
-            as = match(T_STRING, "column alias")->text;
+            as = match(T_IDENTIFIER, "column alias")->text;
+            add_alias(as);
         }
-        add_alias(as);
 
         select->push_back({col, as});
     } while (pop()->type == T_COMMA);
@@ -588,6 +607,7 @@ static Map<String, ColumnDesc> *parse_from() {
             }
             index++;
         }
+        TABLES_USED.insert({as.empty() ? name : as, name});
     } while (pop()->type == T_COMMA);
     unpop();
 
@@ -616,6 +636,7 @@ static Map<String, ColumnDesc> *from_std() {
         index++;
     }
 
+    TABLES_USED.insert({"std", "std"});
     return from;
 }
 
@@ -750,6 +771,100 @@ static void constant_fold(ASTNode *node) {
 }
 
 /**
+ * optimize short circuit and node
+ * @param node the ast root node
+ */
+static void circuit_and(ASTNode *node) {
+    if (node->left->atype == A_LITERAL) {
+        if (node->left->b) {
+            node->atype = node->right->atype;
+            node->b = node->right->b; // must be D_BOOL, so we copy b
+            node->left = node->right->left;
+            node->right = node->right->right;
+            node->s = node->right->s;
+        } else {
+            node->atype = A_LITERAL;
+            node->b = false;
+        }
+        release_node(&node->left);
+        release_node(&node->right);
+    } else if (node->right->atype == A_LITERAL) {
+        if (node->right->b) {
+            node->atype = node->left->atype;
+            node->b = node->left->b;
+            node->left = node->left->left;
+            node->right = node->left->right;
+            node->s = node->left->s;
+        } else {
+            node->atype = A_LITERAL;
+            node->b = false;
+        }
+        release_node(&node->left);
+        release_node(&node->right);
+    }
+}
+
+/**
+ * optimize short circuit or node
+ * @param node the ast root node
+ */
+static void circuit_or(ASTNode *node) {
+    if (node->left->atype == A_LITERAL) {
+        if (node->left->b) {
+            node->atype = A_LITERAL;
+            node->b = true;
+        } else {
+            node->atype = node->right->atype;
+            node->b = node->right->b;
+            node->left = node->right->left;
+            node->right = node->right->right;
+            node->s = node->right->s;
+        }
+        release_node(&node->left);
+        release_node(&node->right);
+    } else if (node->right->atype == A_LITERAL) {
+        if (node->right->b) {
+            node->atype = A_LITERAL;
+            node->b = true;
+        } else {
+            node->atype = node->left->atype;
+            node->b = node->left->b;
+            node->left = node->left->left;
+            node->right = node->left->right;
+            node->s = node->left->s;
+        }
+        release_node(&node->left);
+        release_node(&node->right);
+    }
+}
+
+/**
+ * optimize short circuit
+ * @param node the ast root node
+ */
+static void short_circuit(ASTNode *node) {
+    if (node->atype < A_AND || node->atype > A_OR) {
+        return;
+    }
+
+    if (node->atype == A_AND) {
+        circuit_and(node);
+    }
+    if (node->atype == A_OR) {
+        circuit_or(node);
+    }
+}
+
+/**
+ * optimize the ast
+ * @param node the ast root node
+ */
+static void optimize_ast(ASTNode *node) {
+    constant_fold(node);
+    short_circuit(node);
+}
+
+/**
  * check if the column is valid
  * and repair types if needed
  * @param from FROM table
@@ -772,12 +887,14 @@ static void check_ast(Map<String, ColumnDesc> *from, ASTNode *node) {
             show_error("Column not found: " + node->s);
         }
         node->dtype = from->at(node->s).first; // repair type
+    } else if (node->atype == A_PARAM) { // if it is a param
+        node->dtype = node->right->dtype;
     } else if (node->atype >= A_ADD) {
         node->dtype = repair_type(node->left, node->right, node->atype);
     }
 
     // optimize the ast
-    constant_fold(node);
+    optimize_ast(node);
 }
 
 /**
@@ -786,10 +903,33 @@ static void check_ast(Map<String, ColumnDesc> *from, ASTNode *node) {
  * @param select SELECT clause
  */
 static void validate_select(Map<String, ColumnDesc> *from, Vector<SelectNode> *select) {
-    // expand *
     // assert(select != null); // select would never be null
-    for (val &node: *select) {
-        check_ast(from, node.col);
+    for (int i = 0; i < select->size(); i++) {
+        val &col = select->at(i).col;
+
+        if (col->atype == A_COLUMN && resolve_column(col->s)->second == "*") {
+            val count = expand_star(select, i, resolve_column(col->s)->first);
+            i += count - 1;
+        } else {
+            check_ast(from, col);
+        }
+    }
+
+    // then fix the ALIAS map and SELECT list
+    ALIAS.clear();
+    int index = 0;
+    for (val &col_exp: *select) {
+        var name = col_exp.as;
+        if (!name.empty()) {
+            ALIAS[name] = index;
+        } else if (col_exp.col->atype == A_COLUMN) {
+            name = resolve_column(col_exp.col->s)->second;
+        }
+
+        // dtype has been repaired
+        SELECTS->emplace_back(name, col_exp.col->dtype);
+
+        index++;
     }
 }
 
@@ -799,6 +939,9 @@ static void validate_select(Map<String, ColumnDesc> *from, Vector<SelectNode> *s
  * @param where WHERE clause
  */
 static void validate_where(Map<String, ColumnDesc> *from, ASTNode *where) {
+    if (!where) {
+        return;
+    }
     check_ast(from, where);
     if (where->dtype != D_BOOL) {
         show_error("WHERE clause must a boolean expression");
@@ -943,6 +1086,8 @@ static SelectStatement *parse_select_stmt(const String &name, Vector<WithNode> *
         stmt->where = expression();
     }
 
+    validate_stmt(stmt);
+
     if (peek()->type == T_GROUP) {
         pop();
         stmt->group = parse_group_by();
@@ -958,7 +1103,6 @@ static SelectStatement *parse_select_stmt(const String &name, Vector<WithNode> *
         stmt->limit = parse_limit();
     }
 
-    validate_stmt(stmt);
     if (!name.empty()) {
         // add to table map
         TABLES.insert({name, SELECTS});
@@ -1009,7 +1153,7 @@ static Vector<SelectStatement *> *parse() {
     SelectStatement *stmt;
     Token *start;
     val queries = new Vector<SelectStatement *>();
-    while ((start = pop())) {
+    while ((start = pop(true))) {
         if (start->type == T_SELECT) {
             stmt = parse_select_stmt("");
         } else if (start->type == T_WITH) {
