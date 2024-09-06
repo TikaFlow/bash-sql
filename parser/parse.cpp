@@ -190,8 +190,13 @@ static DataType repair_type(ASTNode *left, ASTNode *right, ASTType op_type) {
         }
 
         return D_NUMBER;
-    } else if (op_type >= A_EQ && op_type <= A_OR) { // binary logic operator
+    } else if (op_type >= A_EQ && op_type <= A_GE) { // binary logic operator
         if (left_type == D_BOOL || right_type == D_BOOL) {
+            show_error("incompatible operands");
+        }
+        return D_BOOL;
+    } else if (op_type >= A_AND && op_type <= A_OR) { // and/or operator
+        if (left_type != D_BOOL || right_type != D_BOOL) {
             show_error("incompatible operands");
         }
         return D_BOOL;
@@ -200,6 +205,8 @@ static DataType repair_type(ASTNode *left, ASTNode *right, ASTType op_type) {
             return D_BOOL;
         }
         show_error("incompatible operands");
+    } else { // "like" or "not like"
+        return D_BOOL;
     }
 
     return D_STRING; // make compiler happy
@@ -377,9 +384,23 @@ static ASTNode *in_list(ASTNode *exp, bool is_in) {
 }
 
 /**
+ * parse LIKE clause
+ * @param exp expression to compare with
+ * @param is_like true if it's "like", false if it's "not like"
+ * @return ast node of the LIKE clause
+ */
+static ASTNode *parse_like(ASTNode *exp, bool is_like) {
+    val atype = is_like ? A_LIKE : A_NOTLIKE;
+    val tk = match(T_STRING, "string");
+    var value = new ASTNode(A_LITERAL, D_STRING, null, null, tk->text);
+
+    return new ASTNode(atype, D_BOOL, exp, value);
+}
+
+/**
  * parse logical factor in expression
  * @note logical_factor ::= arithmetic_expression [comparison_operator arithmetic_expression]
-                            | arithmetic_expression ["NOT"] "IN" in_list
+                            | arithmetic_expression ["NOT"] ("IN" | "LIKE") in_list
                             | arithmetic_expression ["IS" ["NOT"] "NULL"]
         comparison_operator ::= ">" | "<" | ">=" | "<=" | "!=" | "<>"
  * @return ast node of the logical factor
@@ -415,14 +436,21 @@ static ASTNode *logical_factor() {
         }
 
         left = new ASTNode(atype, D_BOOL, left, right);
-    } else if (tk->type == T_NOT || tk->type == T_IN) {
+    } else if (tk->type == T_NOT || tk->type == T_IN || tk->type == T_LIKE) {
 
-        val is_in = tk->type == T_IN;
-        if (!is_in) {
-            match(T_IN, "in");
+        val is_not = tk->type == T_NOT;
+        if (is_not) {
+            tk = pop(); // get the next token
         }
 
-        left = in_list(left, is_in);
+        if (tk->type == T_IN) {
+            left = in_list(left, !is_not);
+        } else if (tk->type == T_LIKE) {
+            left = parse_like(left, !is_not);
+        } else {
+            show_error("Expected IN or LIKE after NOT");
+        }
+
     } else if (tk->type == T_IS) {
 
         var atype = A_ISNULL;
@@ -657,7 +685,7 @@ static inline void release_node(ASTNode **node) {
  * @param node the node to fold
  */
 static void constant_fold(ASTNode *node) {
-    if (node->atype < A_ADD) {
+    if (node->atype < A_ADD || node->atype > A_NOTNULL) {
         return;
     }
 

@@ -28,6 +28,7 @@ static void init_map() {
     KEYWORD.insert({"and", T_AND});
     KEYWORD.insert({"or", T_OR});
     KEYWORD.insert({"not", T_NOT});
+    KEYWORD.insert({"like", T_LIKE});
     KEYWORD.insert({"is", T_IS});
     KEYWORD.insert({"null", T_NULL});
     KEYWORD.insert({"with", T_WITH});
