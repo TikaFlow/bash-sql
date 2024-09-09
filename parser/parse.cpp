@@ -25,7 +25,7 @@ static Map<String, String> TABLES_USED;
 // all tables
 static Map<String, Table *> TABLES;
 // init column number, 32 by default
-extern int COL_NUM;
+static int COL_NUM;
 
 static ASTNode *expression();
 
@@ -89,9 +89,6 @@ static Token *match(TokenType type, const String &what) {
 static void init_std() {
     val std = new Table();
 
-    if (COL_NUM < 1) {
-        COL_NUM = 32;
-    }
     for (int i = 0; i < COL_NUM; ++i) {
         std->push_back({"col" + std::to_string(i + 1), D_STRING});
     }
@@ -200,12 +197,12 @@ static DataType repair_type(ASTNode *left, ASTNode *right, ASTType op_type) {
             show_error("incompatible operands");
         }
         return D_BOOL;
-    } else if (op_type >= A_NOT && op_type <= A_NOTNULL) { // unary logic operator
+    } else if (op_type >= A_NOT && op_type <= A_ISNULL) { // unary logic operator
         if (left_type == D_BOOL) {
             return D_BOOL;
         }
         show_error("incompatible operands");
-    } else { // "like" or "not like"
+    } else { // "like"
         return D_BOOL;
     }
 
@@ -357,16 +354,12 @@ static ASTNode *arithmetic_expression() {
  * parse list of expressions, every expression should be literal
  * @note in_list ::= expression_list ::= "(" expression {"," expression} ")"
  * @param exp expression to compare with
- * @param is_in true if it's "in", false if it's "not in"
  * @return ast node of the "in" list
  */
-static ASTNode *in_list(ASTNode *exp, bool is_in) {
+static ASTNode *in_list(ASTNode *exp) {
     match(T_LPAREN, "open parenthesis");
     // exp in (a, b) ==> exp = a or exp = b
-    // exp not in (a, b) ==> exp != a and exp != b
-    val atype1 = is_in ? A_OR : A_AND;
-    val atype2 = is_in ? A_EQ : A_NE;
-    var left = new ASTNode(A_LITERAL, D_BOOL, null, null, !is_in);
+    var left = new ASTNode(A_LITERAL, D_BOOL, null, null, false);
 
     do {
         var value = expression();
@@ -374,8 +367,8 @@ static ASTNode *in_list(ASTNode *exp, bool is_in) {
             show_error("Expected literal in list");
         }
 
-        val right = new ASTNode(atype2, D_BOOL, exp, value);
-        left = new ASTNode(atype1, D_BOOL, left, right);
+        val right = new ASTNode(A_EQ, D_BOOL, exp, value);
+        left = new ASTNode(A_OR, D_BOOL, left, right);
     } while (pop()->type == T_COMMA);
     unpop();
 
@@ -386,15 +379,13 @@ static ASTNode *in_list(ASTNode *exp, bool is_in) {
 /**
  * parse LIKE clause
  * @param exp expression to compare with
- * @param is_like true if it's "like", false if it's "not like"
  * @return ast node of the LIKE clause
  */
-static ASTNode *parse_like(ASTNode *exp, bool is_like) {
-    val atype = is_like ? A_LIKE : A_NOTLIKE;
-    val tk = match(T_STRING, "string");
+static ASTNode *parse_like(ASTNode *exp) {
+    val tk = match(T_STRING, "string literal");
     var value = new ASTNode(A_LITERAL, D_STRING, null, null, tk->text);
 
-    return new ASTNode(atype, D_BOOL, exp, value);
+    return new ASTNode(A_LIKE, D_BOOL, exp, value);
 }
 
 /**
@@ -444,23 +435,28 @@ static ASTNode *logical_factor() {
         }
 
         if (tk->type == T_IN) {
-            left = in_list(left, !is_not);
+            left = in_list(left);
         } else if (tk->type == T_LIKE) {
-            left = parse_like(left, !is_not);
+            left = parse_like(left);
         } else {
             show_error("Expected IN or LIKE after NOT");
         }
 
+        if (is_not) {
+            left = new ASTNode(A_NOT, D_BOOL, left, null);
+        }
     } else if (tk->type == T_IS) {
-
-        var atype = A_ISNULL;
+        bool is_not = false;
         if (peek()->type == T_NOT) {
             pop();
-            atype = A_NOTNULL;
+            is_not = true;
         }
         match(T_NULL, "null");
+        left = new ASTNode(A_ISNULL, D_BOOL, left, null);
 
-        left = new ASTNode(atype, D_BOOL, left, null);
+        if (is_not) {
+            left = new ASTNode(A_NOT, D_BOOL, left, null);
+        }
     } else {
         unpop();
     }
@@ -685,7 +681,7 @@ static inline void release_node(ASTNode **node) {
  * @param node the node to fold
  */
 static void constant_fold(ASTNode *node) {
-    if (node->atype < A_ADD || node->atype > A_NOTNULL) {
+    if (node->atype < A_ADD || node->atype > A_ISNULL) {
         return;
     }
 
@@ -785,9 +781,6 @@ static void constant_fold(ASTNode *node) {
         case A_ISNULL:
             // only string literal can be null
             node->b = node->left->dtype == D_STRING && node->left->s.empty();
-            break;
-        case A_NOTNULL:
-            node->b = node->left->dtype != D_STRING || !node->left->s.empty();
             break;
         default:
             break;
@@ -977,29 +970,75 @@ static void validate_where(Map<String, ColumnDesc> *from, ASTNode *where) {
 }
 
 /**
+ * check if the group by columns are valid
+ * @param from FROM table
+ * @param select SELECT clause
+ * @param group GROUP BY clause
+ */
+static void validate_group_by(Map<String, ColumnDesc> *from, Vector<SelectNode> *select, Vector<ASTNode *> *group) {
+    if (!group) {
+        return;
+    }
+    for (val &col: *group) {
+        if (col->atype == A_COLUMN) {
+            check_ast(from, col);
+        } else if (col->atype == A_LITERAL && col->dtype == D_INT && col->l > 0 && col->l < select->size()) {
+            val column = select->at(col->l - 1).col;
+            if (column->atype == A_COLUMN) {
+                col->atype = column->atype;
+                col->dtype = column->dtype;
+                col->s = column->s;
+            } else {
+                show_error("Group by clause must be a column");
+            }
+        } else {
+            show_error("Group by clause must be a column or a position in select clause");
+        }
+    }
+}
+
+/**
+ * check if the order by columns are valid
+ * @param order ORDER BY clause
+ */
+static void validate_order_by(Vector<OrderNode> *order) {
+    if (!order) {
+        return;
+    }
+    for (val &col: *order) {
+        if (col.index < 0) {
+            show_error("Column index must be greater than 0");
+        }
+    }
+}
+
+/**
  * check if the statement is valid
  * @param stmt the statement to be checked
+ * @param after_where if we want to check clause after WHERE
  */
-static void validate_stmt(SelectStatement *stmt) {
+static void validate_stmt(SelectStatement *stmt, bool after_where = false) {
+    if (after_where) {
+        // validate group_by and order_by
+        validate_group_by(stmt->from, stmt->select, stmt->group);
+        validate_order_by(stmt->order);
+        return;
+    }
     validate_select(stmt->from, stmt->select);
     validate_where(stmt->from, stmt->where);
-    // validate group_by? I don't know how to do that yet
 }
 
 /**
  * parse GROUP BY clause
  * @return vector of GROUP BY column expression
  */
-static Vector<int> *parse_group_by() {
-    val node = new Vector<int>();
+static Vector<ASTNode *> *parse_group_by() {
+    val node = new Vector<ASTNode *>();
     match(T_BY, "by");
 
     do {
-        val index = (int) match(T_INTEGER, "column index")->integer - 1;
-        if (index < 0) {
-            show_error("Column index must be greater than 0");
-        }
-        node->push_back(index);
+        val col = expression();
+        node->push_back(col);
     } while (pop()->type == T_COMMA);
     unpop();
 
@@ -1039,10 +1078,7 @@ static Vector<OrderNode> *parse_order_by(Vector<SelectNode> *stmt) {
         var token = pop();
         if (token->type == T_INTEGER) {
             order = (int) token->integer - 1;
-            if (order < 0) {
-                show_error("Column index must be greater than 0");
-            }
-        } else if (token->type == T_STRING) {
+        } else if (token->type == T_IDENTIFIER) {
             order = parse_order_col(token->text);
         } else {
             show_error("Expected column name or index but got " + token->text);
@@ -1126,6 +1162,8 @@ static SelectStatement *parse_select_stmt(const String &name, Vector<WithNode> *
         stmt->order = parse_order_by(stmt->select);
     }
 
+    validate_stmt(stmt, true);
+
     if (peek()->type == T_LIMIT) {
         pop();
         stmt->limit = parse_limit();
@@ -1202,8 +1240,9 @@ static Vector<SelectStatement *> *parse() {
  * @param tokens tokens
  * @return vector of SQL statements
  */
-Vector<SelectStatement *> *parse(Vector<Token *> *tokens) {
+Vector<SelectStatement *> *parse(Vector<Token *> *tokens, int col_count) {
     TOKENS = tokens;
+    COL_NUM = col_count;
     init_std();
     return parse();
 }

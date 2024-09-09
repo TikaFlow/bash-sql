@@ -8,6 +8,6 @@
 #include "util.h"
 #include "defs.h"
 
-Vector<SelectStatement *> *parse(Vector<Token *> *tokens);
+Vector<SelectStatement *> *parse(Vector<Token *> *tokens, int col_count);
 
 #endif //BASH_SQL_PARSE_H

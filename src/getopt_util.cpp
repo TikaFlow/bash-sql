@@ -114,6 +114,9 @@ ProgramOptions parse_cmd_options(int argc, char *argv[]) {
                 break;
             case 'c':
                 options.columns = stoi(optarg);
+                if (options.columns < 0) {
+                    arg_error("Invalid column number: " + String(optarg));
+                }
                 break;
             case '?':
                 arg_error("Unknown option.");
@@ -130,6 +133,11 @@ ProgramOptions parse_cmd_options(int argc, char *argv[]) {
         if (i < argc - 1) {
             options.query += " ";
         }
+    }
+
+    // if column number is not specified, use default value
+    if (!options.columns) {
+        options.columns = 32;
     }
 
     // check mutually exclusive options

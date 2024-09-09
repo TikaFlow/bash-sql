@@ -4,21 +4,22 @@
 
 #include "main.h"
 
-int COL_NUM;
-
 int main(int argc, char *argv[]) {
     // parse command line options
     val options = parse_cmd_options(argc, argv);
-    COL_NUM = options.columns;
+    val columns = options.columns; // must be greater than 0
 
-    // get parsed sql ast
-    val sql = parse_sql(options.query);
+    // get parsed queries ast
+    val queries = parse_sql(options.query, columns);
 
     // process data
-    var data = process_data(options);
+    // var data = process_data(options);
+    for (auto query: *queries) {
+        val data = apply(query, options.data, columns, options.delimiter);
+    }
 
     // print data
-    print_data(data, options);
+    // print_data(data, options);
 
     return 0;
 }

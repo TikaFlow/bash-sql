@@ -267,3 +267,18 @@ Vector<Vector<String>> process_data(const ProgramOptions &options) {
 
     return output;
 }
+
+Vector<Line> *apply(SelectStatement *query, const String &data, int col_count, char d) {
+    if (!query) {
+        return null;
+    }
+    if (data.empty() && !query->tableless()) {
+        show_error("Data is empty, but query is not tableless");
+    }
+
+    val res = new Vector<Line>();
+
+    // TODO : implement
+
+    return res;
+}

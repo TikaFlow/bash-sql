@@ -9,7 +9,7 @@
  * @param sql the sql to be parsed
  * @return AST tree
  */
-Vector<SelectStatement *> *parse_sql(const String &sql) {
+Vector<SelectStatement *> *parse_sql(const String &sql, int col_count) {
     if (sql.empty()) {
         return null;
     }
@@ -19,5 +19,5 @@ Vector<SelectStatement *> *parse_sql(const String &sql) {
         std::cout << token->type << " " << token->text << std::endl;
     }
     // DEBUG END
-    return parse(tokens);
+    return parse(tokens, col_count);
 }

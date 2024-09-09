@@ -8,6 +8,14 @@
 #include <iostream>
 #include <string>
 #include "getopt_util.h"
+#include "defs.h"
+
+typedef struct Cell Cell;
+using Line = Vector<Cell *>;
+
+struct Cell {
+
+};
 
 Vector<Pair<int, bool>> check_orders(const Vector<String> &data, const Vector<String> &orders);
 
@@ -30,5 +38,7 @@ int get_col_count(const ProgramOptions &options);
 void prepare_data(const String &data, Vector<Vector<String>> &output, char d);
 
 Vector<Vector<String>> process_data(const ProgramOptions &options);
+
+Vector<Line> *apply(SelectStatement *query, const String &data, int col_count, char d);
 
 #endif //BASH_SQL_PROCESS_H

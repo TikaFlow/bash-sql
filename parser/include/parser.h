@@ -8,6 +8,6 @@
 #include "lex.h"
 #include "parse.h"
 
-Vector<SelectStatement *> *parse_sql(const String &sql);
+Vector<SelectStatement *> *parse_sql(const String &sql, int col_count);
 
 #endif //BASH_SQL_PARSER_H

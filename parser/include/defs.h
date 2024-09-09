@@ -41,7 +41,7 @@ typedef enum {
     A_FUNC_CALL, A_PARAM, A_LITERAL, A_COLUMN,
     A_ADD, A_SUB, A_MUL, A_DIV, A_MOD,
     A_EQ, A_NE, A_LT, A_GT, A_LE, A_GE, A_AND, A_OR,
-    A_NEGATE, A_NOT, A_ISNULL, A_NOTNULL, A_LIKE, A_NOTLIKE, // unary operator
+    A_NEGATE, A_NOT, A_ISNULL, A_LIKE, // unary operator
 } ASTType;
 
 // column type, column index in the table(0-indexed), -1 if ambiguous
@@ -109,6 +109,26 @@ struct ASTNode {
 
     ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right, String s) :
             atype(atype), dtype(dtype), left(left), right(right), s(std::move(s)), l(0) {}
+
+    bool tableless() const {
+        if (atype == A_COLUMN) {
+            return false;
+        }
+
+        if (left) {
+            if (!left->tableless()) {
+                return false;
+            }
+        }
+
+        if (right) {
+            if (!right->tableless()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 };
 
 struct WithNode {
@@ -136,9 +156,29 @@ struct SelectStatement {
     Vector<SelectNode> *select;
     Map<String, ColumnDesc> *from;
     ASTNode *where;
-    Vector<int> *group;
+    Vector<ASTNode *> *group;
     Vector<OrderNode> *order;
     LimitNode *limit;
+
+    bool tableless_with() const {
+        if (!with) {
+            return true;
+        }
+
+        return all_of(with->begin(), with->end(), [](WithNode &node) { return node.stmt->tableless(); });
+    }
+
+    bool tableless_select() const {
+        if (!select) {
+            return true;
+        }
+
+        return all_of(select->begin(), select->end(), [](SelectNode &node) { return node.col->tableless(); });
+    }
+
+    bool tableless() const {
+        return tableless_with() && tableless_select();
+    }
 };
 
 #endif //BASH_SQL_DEFS_H
