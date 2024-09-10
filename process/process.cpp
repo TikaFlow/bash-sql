@@ -4,168 +4,167 @@
 
 #include "process.h"
 
-void prepare_data(const String &data, Vector<Vector<String>> &output, const char d) {
-    val col_count = output[0].size();
+static Vector<Line *> *prepare_data(const String &data, int col_count, char d) {
+    val res = new Vector<Line *>();
     var rows = split_string(data, '\n');
-    for (var &row: rows) {
-        var cols = d == 0 ? split_string_by_spaces(row) : split_string(row, d);
-        if (cols.size() > col_count) {
-            for (var i = col_count; i < cols.size(); i++) {
-                cols[col_count - 1] += " " + cols[i];
+    for (var &row: *rows) {
+        val line = new Line();
+        var cols = d ? split_string(row, d) : split_string_by_spaces(row);
+
+        val size = cols->size();
+        if (size > col_count) {
+            for (var i = col_count; i < size; i++) {
+                cols->at(col_count - 1) += "|" + cols->at(i);
             }
         }
-        cols.resize(col_count);
-        output.push_back(cols);
-    }
-}
+        cols->resize(col_count);
 
-int get_col_count(const ProgramOptions &options) {
-    if (options.columns > 0) {
-        return options.columns;
+        for (val &col: *cols) {
+            line->emplace_back(new Cell(trim(col)));
+        }
+
+        res->emplace_back(line);
     }
 
-    val first_line = split_string(options.data, '\n')[0];
-    val col_count = options.delimiter == 0
-                    ? split_string_by_spaces(first_line).size()
-                    : split_string(first_line, options.delimiter).size();
-    return (int) col_count;
+    return res;
 }
 
 Vector<String> exec_select(const Vector<String> &title, const Vector<String> &row,
                            const String &select) {
     Vector<String> new_row;
 
-    val cols = split_string(select, ',');
-    for (val &col: cols) {
-        if (trim(col) == "*") {
-            new_row.insert(new_row.end(), row.begin(), row.end());
-            continue;
-        }
-
-        val reg = Regex(R"(\s+(AS|as)\s+)");
-        std::smatch match;
-        using std::regex_search;
-        val pos = regex_search(col, match, reg) ? match.position(0) : npos;
-        val old_col = pos == npos ? trim(col) : trim(col.substr(0, pos));
-        val idx = std::find(title.begin(), title.end(), old_col);
-        val new_col = row[std::distance(title.begin(), idx)];
-        new_row.push_back(new_col);
-    }
+    // val cols = split_string(select, ',');
+    // for (val &col: cols) {
+    //     if (trim(col) == "*") {
+    //         new_row.insert(new_row.end(), row.begin(), row.end());
+    //         continue;
+    //     }
+    //
+    //     val reg = Regex(R"(\s+(AS|as)\s+)");
+    //     std::smatch match;
+    //     using std::regex_search;
+    //     val pos = regex_search(col, match, reg) ? match.position(0) : npos;
+    //     val old_col = pos == npos ? trim(col) : trim(col.substr(0, pos));
+    //     val idx = std::find(title.begin(), title.end(), old_col);
+    //     val new_col = row[std::distance(title.begin(), idx)];
+    //     new_row.push_back(new_col);
+    // }
     return new_row;
 }
 
 bool exec_where(const Vector<String> &title, const Vector<String> &row, const String &where) {
-    if (where.empty()) {
-        return true;
-    }
-
-    val clauses = split_string_by_spaces(where);
-    if (clauses.size() < 3) {
-        show_error("Unknown error.");
-    }
-    val &col = clauses[0];
-    val col_at = std::distance(title.begin(), std::find(title.begin(), title.end(), col));
-    if (col_at >= title.size()) {
-        show_error("Column '" + col + "' not found.");
-    }
-    val &col_value = row[col_at];
-    val NOT = clauses.size() == 4;
-    val &type = clauses[clauses.size() - 2];
-    var pattern_str = clauses[clauses.size() - 1];
-
-    if (type == "LIKE" || type == "like") {
-        replaceAll(pattern_str, "\\%", "@");
-        replaceAll(pattern_str, "%", ".*");
-        replaceAll(pattern_str, "@", "%");
-
-        replaceAll(pattern_str, "\\_", "@");
-        replaceAll(pattern_str, "_", ".");
-        replaceAll(pattern_str, "@", "_");
-    } else if (type != "REG" && type != "reg") {
-        show_error("Unknown error.");
-    }
-
-    Regex reg = Regex(pattern_str);
-    val res = std::regex_match(col_value, reg);
-
-    return NOT ^ res;
+    // if (where.empty()) {
+    //     return true;
+    // }
+    //
+    // val clauses = split_string_by_spaces(where);
+    // if (clauses.size() < 3) {
+    //     show_error("Unknown error.");
+    // }
+    // val &col = clauses[0];
+    // val col_at = std::distance(title.begin(), std::find(title.begin(), title.end(), col));
+    // if (col_at >= title.size()) {
+    //     show_error("Column '" + col + "' not found.");
+    // }
+    // val &col_value = row[col_at];
+    // val NOT = clauses.size() == 4;
+    // val &type = clauses[clauses.size() - 2];
+    // var pattern_str = clauses[clauses.size() - 1];
+    //
+    // if (type == "LIKE" || type == "like") {
+    //     replace_all(pattern_str, "\\%", "@");
+    //     replace_all(pattern_str, "%", ".*");
+    //     replace_all(pattern_str, "@", "%");
+    //
+    //     replace_all(pattern_str, "\\_", "@");
+    //     replace_all(pattern_str, "_", ".");
+    //     replace_all(pattern_str, "@", "_");
+    // } else if (type != "REG" && type != "reg") {
+    //     show_error("Unknown error.");
+    // }
+    //
+    // Regex reg = Regex(pattern_str);
+    // val res = std::regex_match(col_value, reg);
+    //
+    // return NOT ^ res;
+    return true;
 }
 
 Vector<String> handle_title(const Vector<String> &title, const String &select) {
     Vector<String> new_title;
 
-    val cols = split_string(select, ',');
-    for (val &col: cols) {
-        if (trim(col) == "*") {
-            new_title.insert(new_title.end(), title.begin(), title.end());
-            continue;
-        }
-        val reg = Regex(R"(\s+(AS|as)\s+)");
-        std::smatch match;
-        using std::regex_search;
-        val pos = regex_search(col, match, reg) ? match.position(0) : npos;
-        if (pos != npos && pos >= col.size() - 4) {
-            show_error("Syntax error near '" + col + "'.");
-        }
-        val old_col = pos == npos ? trim(col) : trim(col.substr(0, pos));
-        val idx = std::find(title.begin(), title.end(), old_col);
-        if (idx == title.end()) {
-            show_error("Column '" + old_col + "' not found");
-        }
-        val alias = pos == npos ? "" : trim(col.substr(pos + match.str().size()));
-        val new_col = alias.empty() ? old_col : alias;
-
-        for_each(new_title.begin(), new_title.end(), [&new_col](const String &s) {
-            if (new_col == s) show_error("Duplicate column name '" + new_col + "'.");
-        });
-
-        new_title.push_back(new_col);
-    }
+    // val cols = split_string(select, ',');
+    // for (val &col: cols) {
+    //     if (trim(col) == "*") {
+    //         new_title.insert(new_title.end(), title.begin(), title.end());
+    //         continue;
+    //     }
+    //     val reg = Regex(R"(\s+(AS|as)\s+)");
+    //     std::smatch match;
+    //     using std::regex_search;
+    //     val pos = regex_search(col, match, reg) ? match.position(0) : npos;
+    //     if (pos != npos && pos >= col.size() - 4) {
+    //         show_error("Syntax error near '" + col + "'.");
+    //     }
+    //     val old_col = pos == npos ? trim(col) : trim(col.substr(0, pos));
+    //     val idx = std::find(title.begin(), title.end(), old_col);
+    //     if (idx == title.end()) {
+    //         show_error("Column '" + old_col + "' not found");
+    //     }
+    //     val alias = pos == npos ? "" : trim(col.substr(pos + match.str().size()));
+    //     val new_col = alias.empty() ? old_col : alias;
+    //
+    //     for_each(new_title.begin(), new_title.end(), [&new_col](const String &s) {
+    //         if (new_col == s) show_error("Duplicate column name '" + new_col + "'.");
+    //     });
+    //
+    //     new_title.push_back(new_col);
+    // }
     return new_title;
 }
 
 Vector<Pair<int, bool>> check_orders(const Vector<String> &data, const Vector<String> &orders) {
     Vector<Pair<int, bool>> sort_order;
-    for (val &order: orders) {
-        val cols = split_string_by_spaces(trim(order));
-        if (cols.size() > 2) {
-            show_error("Syntax error near '" + order + "'.");
-        }
-        val &col = cols[0];
-        val idx = std::distance(data.begin(), std::find(data.begin(), data.end(), col));
-        if (idx >= data.size()) {
-            show_error("Column '" + col + "' not found.");
-        }
-
-        val direction = cols.size() == 2 ? cols[1] : "";
-        val asc = direction.empty() || direction == "ASC" || direction == "asc";
-
-        sort_order.emplace_back(idx, asc);
-    }
+    // for (val &order: orders) {
+    //     val cols = split_string_by_spaces(trim(order));
+    //     if (cols.size() > 2) {
+    //         show_error("Syntax error near '" + order + "'.");
+    //     }
+    //     val &col = cols[0];
+    //     val idx = std::distance(data.begin(), std::find(data.begin(), data.end(), col));
+    //     if (idx >= data.size()) {
+    //         show_error("Column '" + col + "' not found.");
+    //     }
+    //
+    //     val direction = cols.size() == 2 ? cols[1] : "";
+    //     val asc = direction.empty() || direction == "ASC" || direction == "asc";
+    //
+    //     sort_order.emplace_back(idx, asc);
+    // }
 
     return sort_order;
 }
 
 void sort_data(Vector<Vector<String>> &data, const String &order) {
-    if (order.empty()) {
-        return;
-    }
-    val orders = split_string(order, ',');
-    val sort_order = check_orders(data[0], orders);
-
-    std::sort(data.begin() + 1, data.end(),
-              [&sort_order](const Vector<String> &a, const Vector<String> &b) -> bool {
-                  var res = false;
-                  for (val &order: sort_order) {
-                      val o = a[order.first].compare(b[order.first]);
-                      if (o == 0) {
-                          continue;
-                      }
-                      res = o > 0;
-                      return order.second ^ res;
-                  }
-                  return false;
-              });
+    // if (order.empty()) {
+    //     return;
+    // }
+    // val orders = split_string(order, ',');
+    // val sort_order = check_orders(data[0], orders);
+    //
+    // std::sort(data.begin() + 1, data.end(),
+    //           [&sort_order](const Vector<String> &a, const Vector<String> &b) -> bool {
+    //               var res = false;
+    //               for (val &order: sort_order) {
+    //                   val o = a[order.first].compare(b[order.first]);
+    //                   if (o == 0) {
+    //                       continue;
+    //                   }
+    //                   res = o > 0;
+    //                   return order.second ^ res;
+    //               }
+    //               return false;
+    //           });
 }
 
 Vector<Vector<String>> process_query(const Vector<Vector<String>> &input,
@@ -245,30 +244,31 @@ void verify_query(const String &query) {
 
 Vector<Vector<String>> process_data(const ProgramOptions &options) {
     // init column names
-    val col_count = get_col_count(options);
-    Vector<String> col_names(col_count);
-    for (var i = 0; i < col_count; i++) {
-        col_names[i] = "col" + to_string(i + 1);
-    }
-
-    // prepare data to be processed
-    Vector<Vector<String>> output;
-    output.push_back(col_names);
-    prepare_data(options.data, output, options.delimiter);
-    if (!trim(options.query).empty()) {
-        // Split the query into multiple queries
-        val queries = split_string(options.query, '|');
-
-        for (val &query: queries) {
-            verify_query(query);
-            output = process_query(output, query);
-        }
-    }
-
-    return output;
+    // val col_count = get_col_count(options);
+    // Vector<String> col_names(col_count);
+    // for (var i = 0; i < col_count; i++) {
+    //     col_names[i] = "col" + to_string(i + 1);
+    // }
+    //
+    // // prepare data to be processed
+    // Vector<Vector<String>> output;
+    // output.push_back(col_names);
+    // prepare_data(options.data, output, options.delimiter);
+    // if (!trim(options.query).empty()) {
+    //     // Split the query into multiple queries
+    //     val queries = split_string(options.query, '|');
+    //
+    //     for (val &query: queries) {
+    //         verify_query(query);
+    //         output = process_query(output, query);
+    //     }
+    // }
+    //
+    // return output;
+    return {};
 }
 
-Vector<Line> *apply(SelectStatement *query, const String &data, int col_count, char d) {
+Vector<Line *> *apply(SelectStatement *query, const String &data, int col_count, char d) {
     if (!query) {
         return null;
     }
@@ -276,7 +276,8 @@ Vector<Line> *apply(SelectStatement *query, const String &data, int col_count, c
         show_error("Data is empty, but query is not tableless");
     }
 
-    val res = new Vector<Line>();
+    val res = new Vector<Line *>();
+    val pre_data = prepare_data(data, col_count, d);
 
     // TODO : implement
 

@@ -14,31 +14,23 @@ typedef struct Cell Cell;
 using Line = Vector<Cell *>;
 
 struct Cell {
+    DataType type;
+    union {
+        long l;
+        double d;
+        bool b;
+    };
+    String s;
 
+    explicit Cell(long l) : type(D_INT), l(l) {};
+
+    explicit Cell(double d) : type(D_REAL), d(d) {};
+
+    explicit Cell(bool b) : type(D_BOOL), b(b) {};
+
+    explicit Cell(String s) : type(D_STRING), s(std::move(s)), l(0) {};
 };
 
-Vector<Pair<int, bool>> check_orders(const Vector<String> &data, const Vector<String> &orders);
-
-void sort_data(Vector<Vector<String>> &data, const String &order);
-
-void verify_query(const String &query);
-
-Vector<String> handle_title(const Vector<String> &title, const String &select);
-
-Vector<String> exec_select(const Vector<String> &title, const Vector<String> &row,
-                           const String &select);
-
-bool exec_where(const Vector<String> &title, const Vector<String> &row, const String &where);
-
-Vector<Vector<String>> process_query(const Vector<Vector<String>> &input,
-                                     const String &query);
-
-int get_col_count(const ProgramOptions &options);
-
-void prepare_data(const String &data, Vector<Vector<String>> &output, char d);
-
-Vector<Vector<String>> process_data(const ProgramOptions &options);
-
-Vector<Line> *apply(SelectStatement *query, const String &data, int col_count, char d);
+Vector<Line*> *apply(SelectStatement *query, const String &data, int col_count, char d);
 
 #endif //BASH_SQL_PROCESS_H

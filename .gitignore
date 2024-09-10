@@ -6,6 +6,7 @@ cmake-build-debug
 build
 # Debug files
 test
+**/test*
 
 # Prerequisites
 *.d

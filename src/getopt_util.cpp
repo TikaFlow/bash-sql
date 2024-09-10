@@ -135,17 +135,15 @@ ProgramOptions parse_cmd_options(int argc, char *argv[]) {
         }
     }
 
-    // if column number is not specified, use default value
-    if (!options.columns) {
-        options.columns = 32;
-    }
-
     // check mutually exclusive options
     if (help || version) {
-        if (options.title || !options.data.empty() || !options.file.empty() || options.delimiter != '\0' ||
-            options.columns != 0 || !options.query.empty()) {
-            if (help) arg_error("Help option cannot be used with other options.");
-            if (version) arg_error("Version option cannot be used with other options.");
+        if (options.title || data || file || options.delimiter || options.columns || !options.query.empty()) {
+            if (help) {
+                arg_error("Help option cannot be used with other options.");
+            }
+            if (version) {
+                arg_error("Version option cannot be used with other options.");
+            }
         }
     } else {
         if (data && file) {
@@ -168,14 +166,14 @@ ProgramOptions parse_cmd_options(int argc, char *argv[]) {
         exit(0);
     }
 
-    // check necessary options
-    if (!data && !file) {
-        show_error("No input data provided.\n"
-                   "Use -h or --help for more information.");
+    // if column number is not specified, use default value
+    if (!options.columns) {
+        options.columns = 32;
     }
+
     // get data string
-    if (!data) {
-        options.data = readFileString(options.file);
+    if (file) {
+        options.data = read_file_to_string(options.file);
     }
 
     return options;

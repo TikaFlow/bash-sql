@@ -60,29 +60,6 @@ struct Token {
     String text;
 };
 
-struct Param {
-    DataType type;
-    union {
-        long l;
-        double d;
-        bool b;
-    };
-    String s;
-
-    explicit Param(String str) : type(D_STRING), s(std::move(str)) {};
-
-    explicit Param(long value) : type(D_INT), l(value) {};
-
-    explicit Param(double value) : type(D_REAL), d(value) {};
-
-    explicit Param(bool value) : type(D_BOOL), b(value) {};
-};
-
-struct Column {
-    ASTNode *table;
-    int index;
-};
-
 struct ASTNode {
     ASTType atype;
     DataType dtype;

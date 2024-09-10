@@ -25,34 +25,34 @@ namespace util {
         return res;
     }
 
-    Vector<String> split_string(const String &query, char delimiter) {
-        Vector<String> res;
+    Vector<String> *split_string(const String &query, char delimiter) {
+        val res = new Vector<String>();
         size_t pos = 0;
         var found = query.find(delimiter);
         while (found != npos) {
-            res.push_back(query.substr(pos, found - pos));
+            res->push_back(query.substr(pos, found - pos));
             pos = found + 1;
             found = query.find(delimiter, pos);
         }
-        res.push_back(query.substr(pos));
+        res->push_back(query.substr(pos));
         return res;
     }
 
-    Vector<String> split_string_by_spaces(const String &input) {
+    Vector<String> *split_string_by_spaces(const String &input) {
         const Regex re("\\s+");
 
         std::sregex_token_iterator it(input.begin(), input.end(), re, -1);
-        Vector<String> tokens;
+        val res = new Vector<String>();
 
         for (const std::sregex_token_iterator end; it != end; ++it) {
-            tokens.push_back(it->str());
+            res->push_back(it->str());
         }
 
-        tokens.erase(std::remove_if(tokens.begin(), tokens.end(), [](const String &s) {
+        res->erase(std::remove_if(res->begin(), res->end(), [](const String &s) {
             return s.empty();
-        }), tokens.end());
+        }), res->end());
 
-        return tokens;
+        return res;
     }
 
     void show_error(const String &msg) {
@@ -64,7 +64,7 @@ namespace util {
         cout << "WARNING: " << msg << endl;
     }
 
-    String &replaceAll(String &str, const String &src, const String &dst) {
+    String &replace_all(String &str, const String &src, const String &dst) {
         String::size_type pos;
         while (true) {
             if ((pos = str.find(src)) != npos) {
@@ -76,7 +76,7 @@ namespace util {
         return str;
     }
 
-    String readFileString(const String &filename) {
+    String read_file_to_string(const String &filename) {
         std::ifstream file(filename);
         if (!file.is_open()) {
             show_error("Unable to open file: " + filename);

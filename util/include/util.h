@@ -21,17 +21,17 @@ namespace util {
 
     String to_lower(const String &str);
 
-    Vector<String> split_string(const String &query, char delimiter);
+    Vector<String> *split_string(const String &query, char delimiter);
 
-    Vector<String> split_string_by_spaces(const String &input);
+    Vector<String> *split_string_by_spaces(const String &input);
 
-    String &replaceAll(String &str, const String &src, const String &dst);
+    String &replace_all(String &str, const String &src, const String &dst);
 
     void show_error(const String &msg);
 
     void show_warn(const String &msg);
 
-    String readFileString(const String &filename);
+    String read_file_to_string(const String &filename);
 
     bool is_integer(const String &str);
 
