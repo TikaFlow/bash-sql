@@ -5,13 +5,12 @@
 #ifndef BASH_SQL_PROCESS_H
 #define BASH_SQL_PROCESS_H
 
-#include <iostream>
-#include <string>
 #include "getopt_util.h"
 #include "defs.h"
 
 typedef struct Cell Cell;
-using Line = Vector<Cell *>;
+using Row = Vector<Cell *>;
+using Result = Vector<Row *>;
 
 struct Cell {
     DataType type;
@@ -31,6 +30,6 @@ struct Cell {
     explicit Cell(String s) : type(D_STRING), s(std::move(s)), l(0) {};
 };
 
-Vector<Line*> *apply(SelectStatement *query, const String &data, int col_count, char d);
+Result *apply(SelectStatement *query, const String &data, int col_count, char d);
 
 #endif //BASH_SQL_PROCESS_H

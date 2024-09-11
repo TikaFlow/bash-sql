@@ -4,12 +4,19 @@
 
 #include "process.h"
 
-static Vector<Line *> *prepare_data(const String &data, int col_count, char d) {
-    val res = new Vector<Line *>();
-    var rows = split_string(data, '\n');
-    for (var &row: *rows) {
-        val line = new Line();
-        var cols = d ? split_string(row, d) : split_string_by_spaces(row);
+/**
+ * prepare data from string
+ * @param data data string
+ * @param col_count column count
+ * @param d delimiter
+ * @return data of table format
+ */
+static Result *prepare_data(const String &data, int col_count, char d) {
+    val res = new Result();
+    var lines = split_string(data, '\n');
+    for (var &line: *lines) {
+        val row = new Row();
+        var cols = d ? split_string(line, d) : split_string_by_spaces(line);
 
         val size = cols->size();
         if (size > col_count) {
@@ -20,10 +27,82 @@ static Vector<Line *> *prepare_data(const String &data, int col_count, char d) {
         cols->resize(col_count);
 
         for (val &col: *cols) {
-            line->emplace_back(new Cell(trim(col)));
+            row->emplace_back(new Cell(trim(col)));
         }
 
-        res->emplace_back(line);
+        res->emplace_back(row);
+    }
+
+    return res;
+}
+
+static Result *apply_from(Map<String, ColumnDesc> *from, Map<String, Result *> *data) {
+    return null;
+}
+
+static Result *apply_where(ASTNode *where, Result *from) {
+    if (!where) {
+        return from;
+    }
+    return null;
+}
+
+static Result *apply_group_by(Vector<ASTNode *> *group, Result *where) {
+    return null;
+}
+
+static Result *apply_select(Vector<SelectNode> *select, Result *group_by) {
+    // in group_by, col0 at every Row is the group key
+    return null;
+}
+
+static Result *apply_order_by(Vector<OrderNode> *order, Result *select) {
+    if (!order) {
+        return select;
+    }
+    return null;
+}
+
+static Result *apply_limit(LimitNode *limit, Result *order_by) {
+    if (!limit) {
+        return order_by;
+    }
+    return null;
+}
+
+/**
+ * apply select statement, ignore the with clause(passed by data)
+ * @param stmt select statement
+ * @param data data set of table
+ * @return data of table format
+ */
+static Result *apply_stmt(SelectStatement *stmt, Map<String, Result *> *data) {
+    val from = apply_from(stmt->from, data); // TODO I need to support where clause with join-on
+    val where = apply_where(stmt->where, from);
+    val group_by = apply_group_by(stmt->group, where);
+    val select = apply_select(stmt->select, group_by);
+    val order_by = apply_order_by(stmt->order, select);
+    val limit = apply_limit(stmt->limit, order_by);
+    return limit;
+}
+
+/**
+ * apply with clause
+ * @param with with clause
+ * @param pre_data prepared table data
+ * @return data set of table
+ */
+static Map<String, Result *> *apply_with(Vector<WithNode> *with, Result *pre_data) {
+    val res = new Map<String, Result *>;
+    res->insert({"std", pre_data});
+
+    if (!with) {
+        return res;
+    }
+
+    for (val &node: *with) {
+        val data = apply_stmt(node.stmt, res);
+        res->insert({node.as, data});
     }
 
     return res;
@@ -242,6 +321,22 @@ void verify_query(const String &query) {
     }
 }
 
+static void free_result(Result *result) {
+    if (!result) {
+        return;
+    }
+    for (val &row: *result) {
+        if (!row) {
+            continue;
+        }
+        for (val &cell: *row) {
+            delete cell;
+        }
+        delete row;
+    }
+    delete result;
+}
+
 Vector<Vector<String>> process_data(const ProgramOptions &options) {
     // init column names
     // val col_count = get_col_count(options);
@@ -268,7 +363,15 @@ Vector<Vector<String>> process_data(const ProgramOptions &options) {
     return {};
 }
 
-Vector<Line *> *apply(SelectStatement *query, const String &data, int col_count, char d) {
+/**
+ * Apply one query to the data
+ * @param query the query AST
+ * @param data the origin data to be processed, not included the title
+ * @param col_count the column count of the data
+ * @param d the delimiter of the data, default is "\\s+"
+ * @return the processed data
+ */
+Result *apply(SelectStatement *query, const String &data, int col_count, char d) {
     if (!query) {
         return null;
     }
@@ -276,10 +379,16 @@ Vector<Line *> *apply(SelectStatement *query, const String &data, int col_count,
         show_error("Data is empty, but query is not tableless");
     }
 
-    val res = new Vector<Line *>();
     val pre_data = prepare_data(data, col_count, d);
+    val with_data = apply_with(query->with, pre_data);
+    val res = apply_stmt(query, with_data);
 
-    // TODO : implement
+    // free with_data
+    for (val &result: *with_data) {
+        free_result(result.second);
+    }
+    with_data->clear();
+    delete with_data;
 
     return res;
 }
