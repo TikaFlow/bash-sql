@@ -530,10 +530,10 @@ static int expand_star(Vector<SelectNode> *select, int i, const String &table) {
     for (auto &t: tables) {
         val cols = t.second;
         for (auto &col: *cols) {
-            val name = col.first;
+            val name = t.first + "." + col.first;
             val dtype = col.second;
             val node = new ASTNode(A_COLUMN, dtype, null, null, name);
-            select->insert(select->begin() + i + count++, {node, name});
+            select->insert(select->begin() + i + count++, {node, ""});
         }
     }
 
@@ -551,117 +551,6 @@ static void add_alias(const String &alias) {
     }
 
     ALIAS.insert({name, 1}); // 1 is dummy
-}
-
-/**
- * parse SELECT clause
- * @return vector of SELECT node
- */
-static Vector<SelectNode> *parse_select() {
-    val select = new Vector<SelectNode>();
-    do {
-        String as;
-        if (peek()->type == T_STAR) {
-            pop();
-            val col = new ASTNode(A_COLUMN, D_NONE, null, null, String("*"));
-            // select *
-            select->push_back({col, as});
-            continue;
-        }
-
-        val col = expression();
-        if (col->atype == A_COLUMN) {
-            val col_name = resolve_column(col->s)->second;
-            if (col_name != "*") {
-                as = col_name;
-            } else {
-                // select t.*
-                select->push_back({col, as});
-                continue;
-            }
-        }
-        if (peek()->type == T_AS) {
-            pop();
-            as = match(T_IDENTIFIER, "column alias")->text;
-            add_alias(as);
-        }
-
-        select->push_back({col, as});
-    } while (pop()->type == T_COMMA);
-    unpop();
-
-    return select;
-}
-
-/**
- * parse FROM clause
- * @return pointer to FROM node
- */
-static Map<String, ColumnDesc> *parse_from() {
-    val from = new Map<String, ColumnDesc>();
-    var index = 0;
-    val alias = new Map<String, int>;
-
-    do {
-        val name = match(T_IDENTIFIER, "table name")->text;
-        String as;
-
-        if (!TABLES.count(name)) {
-            show_error("Table " + name + " not found");
-        }
-        alias->insert({name, 1}); // 1 is meaningless
-
-        if (peek()->type == T_AS) {
-            pop();
-            as = match(T_IDENTIFIER, "alias name")->text;
-            if (alias->count(as)) {
-                show_error("Duplicate alias name: " + as);
-            }
-            alias->insert({as, 1});
-        }
-
-        val table = TABLES.at(name);
-        for (val &col: *table) {
-            from->insert({name + "." + col.first, {col.second, index}});
-            from->insert({as + (as.empty() ? "" : ".") + col.first, {col.second, index}});
-            if (from->count(col.first)) {
-                from->insert({col.first, {col.second, -1}});
-            } else {
-                from->insert({col.first, {col.second, index}});
-            }
-            index++;
-        }
-        TABLES_USED.insert({as.empty() ? name : as, name});
-    } while (pop()->type == T_COMMA);
-    unpop();
-
-    return from;
-}
-
-/**
- * generate from node of "from std", when no from clause, use std as default
- * @return pointer to FROM node
- */
-static Map<String, ColumnDesc> *from_std() {
-    val from = new Map<String, ColumnDesc>();
-    var index = 0;
-
-    val table = TABLES.at("std");
-    for (val &col: *table) {
-        // std.col1 is always valid because table name are unique and col1 is unique in table std
-        from->insert({"std." + col.first, {col.second, index}});
-        if (from->count(col.first)) {
-            // if col1 is already in the map, insert with -1 which means it's ambiguous
-            from->insert({col.first, {col.second, -1}});
-        } else {
-            // if col1 is unique for now, then has the same index with std.col1
-            from->insert({col.first, {col.second, index}});
-        }
-        index++;
-    }
-
-    TABLES_USED.insert({"std", "std"});
-    return from;
 }
 
 /**
@@ -891,7 +780,7 @@ static void optimize_ast(ASTNode *node) {
  * @param from FROM table
  * @param node the node containing the column
  */
-static void check_ast(Map<String, ColumnDesc> *from, ASTNode *node) {
+static void check_ast(TableSet *from, ASTNode *node) {
     if (!node) {
         return;
     }
@@ -907,7 +796,13 @@ static void check_ast(Map<String, ColumnDesc> *from, ASTNode *node) {
         if (!from->count(node->s)) {
             show_error("Column not found: " + node->s);
         }
-        node->dtype = from->at(node->s).first; // repair type
+        val desc = from->at(node->s);
+        node->dtype = desc.first; // repair type
+        if (desc.second != -1) {
+            node->l = desc.second; // save col index
+        } else {
+            show_error("Ambiguous column: " + node->s);
+        }
     } else if (node->atype == A_PARAM) { // if it is a param
         node->dtype = node->right->dtype;
     } else if (node->atype >= A_ADD) {
@@ -923,7 +818,7 @@ static void check_ast(Map<String, ColumnDesc> *from, ASTNode *node) {
  * @param from FROM table
  * @param select SELECT clause
  */
-static void validate_select(Map<String, ColumnDesc> *from, Vector<SelectNode> *select) {
+static void validate_select(TableSet *from, Vector<SelectNode> *select) {
     // assert(select != null); // select would never be null
     for (int i = 0; i < select->size(); i++) {
         val &col = select->at(i).col;
@@ -931,20 +826,20 @@ static void validate_select(Map<String, ColumnDesc> *from, Vector<SelectNode> *s
         if (col->atype == A_COLUMN && resolve_column(col->s)->second == "*") {
             val count = expand_star(select, i, resolve_column(col->s)->first);
             i += count - 1;
-        } else {
-            check_ast(from, col);
         }
     }
 
     // then fix the ALIAS map and SELECT list
     ALIAS.clear();
     int index = 0;
-    for (val &col_exp: *select) {
+    for (var &col_exp: *select) {
+        check_ast(from, col_exp.col);
         var name = col_exp.as;
         if (!name.empty()) {
             ALIAS[name] = index;
         } else if (col_exp.col->atype == A_COLUMN) {
             name = resolve_column(col_exp.col->s)->second;
+            col_exp.as = name;
         }
 
         // dtype has been repaired
@@ -959,7 +854,7 @@ static void validate_select(Map<String, ColumnDesc> *from, Vector<SelectNode> *s
  * @param from FROM table
  * @param where WHERE clause
  */
-static void validate_where(Map<String, ColumnDesc> *from, ASTNode *where) {
+static void validate_where(TableSet *from, ASTNode *where) {
     if (!where) {
         return;
     }
@@ -975,7 +870,7 @@ static void validate_where(Map<String, ColumnDesc> *from, ASTNode *where) {
  * @param select SELECT clause
  * @param group GROUP BY clause
  */
-static void validate_group_by(Map<String, ColumnDesc> *from, Vector<SelectNode> *select, Vector<ASTNode *> *group) {
+static void validate_group_by(TableSet *from, Vector<SelectNode> *select, Vector<ASTNode *> *group) {
     if (!group) {
         return;
     }
@@ -1017,15 +912,146 @@ static void validate_order_by(Vector<OrderNode> *order) {
  * @param stmt the statement to be checked
  * @param after_where if we want to check clause after WHERE
  */
-static void validate_stmt(SelectStatement *stmt, bool after_where = false) {
+static void validate_stmt(SelectStatement *stmt, TableSet *from_set, bool after_where = false) {
     if (after_where) {
         // validate group_by and order_by
-        validate_group_by(stmt->from, stmt->select, stmt->group);
+        validate_group_by(from_set, stmt->select, stmt->group);
         validate_order_by(stmt->order);
         return;
     }
-    validate_select(stmt->from, stmt->select);
-    validate_where(stmt->from, stmt->where);
+    validate_select(from_set, stmt->select);
+    validate_where(from_set, stmt->where);
+}
+
+/**
+ * parse SELECT clause
+ * @return vector of SELECT node
+ */
+static Vector<SelectNode> *parse_select() {
+    val select = new Vector<SelectNode>();
+    Token *tk;
+    do {
+        String as;
+        if (peek()->type == T_STAR) {
+            pop();
+            val col = new ASTNode(A_COLUMN, D_NONE, null, null, String("*"));
+            // select *
+            select->push_back({col, as});
+            continue;
+        }
+
+        val col = expression();
+        if (col->atype == A_COLUMN) {
+            val col_name = resolve_column(col->s)->second;
+            if (col_name != "*") {
+                as = col_name;
+            } else {
+                // select t.*
+                select->push_back({col, as});
+                continue;
+            }
+        }
+        if ((tk = peek())->type == T_AS || tk->type == T_IDENTIFIER) {
+            if (tk->type == T_AS) {
+                pop();
+            }
+            as = match(T_IDENTIFIER, "column alias")->text;
+            add_alias(as);
+        }
+
+        select->push_back({col, as});
+    } while (pop()->type == T_COMMA);
+    unpop();
+
+    return select;
+}
+
+/**
+ * parse FROM clause
+ * @return the FROM node
+ */
+static Pair<ASTNode *, TableSet *> parse_from() {
+    Token *tk = null;
+    ASTNode *join = null;
+    val from = new TableSet();
+    var index = 0;
+    val alias = new Map<String, int>();
+
+    do {
+        val name = match(T_IDENTIFIER, "table name")->text;
+        String as;
+
+        if (!TABLES.count(name)) {
+            show_error("Table " + name + " not found");
+        }
+        join = new ASTNode(A_JOIN, D_NONE, join, null, name);
+        alias->insert({name, 1}); // 1 is meaningless
+
+        if ((tk = peek())->type == T_AS || tk->type == T_IDENTIFIER) {
+            if (tk->type == T_AS) {
+                pop();
+            }
+            as = match(T_IDENTIFIER, "alias name")->text;
+            if (alias->count(as)) {
+                show_error("Duplicate alias name: " + as);
+            }
+            alias->insert({as, 1});
+        }
+
+        val table = TABLES.at(name);
+        for (val &col: *table) {
+            from->insert({name + "." + col.first, {col.second, index}});
+            if (!as.empty()) {
+                from->insert({as + "." + col.first, {col.second, index}});
+            }
+            if (from->count(col.first)) {
+                from->at(col.first) = {col.second, -1};
+            } else {
+                from->insert({col.first, {col.second, index}});
+            }
+            index++;
+        }
+        TABLES_USED.insert({as.empty() ? name : as, name});
+
+        if ((tk = peek())->type == T_ON) {
+            pop();
+            join->right = expression();
+            validate_where(from, join->right);
+        } else {
+            join->right = new ASTNode(A_LITERAL, D_BOOL, null, null, true);
+        }
+    } while ((tk = pop())->type == T_JOIN); // maybe left/right/full join, in the future
+    unpop();
+
+    return {join, from};
+}
+
+/**
+ * generate from node of "from std", when no from clause, use std as default
+ * @return the FROM node
+ */
+static Pair<ASTNode *, TableSet *> from_std() {
+    val from = new TableSet();
+    var index = 0;
+
+    val table = TABLES.at("std");
+    for (val &col: *table) {
+        // std.col1 is always valid because table name are unique and col1 is unique in table std
+        from->insert({"std." + col.first, {col.second, index}});
+        if (from->count(col.first)) {
+            // if col1 is already in the map, insert with -1 which means it's ambiguous
+            from->insert({col.first, {col.second, -1}});
+        } else {
+            // if col1 is unique for now, then has the same index with std.col1
+            from->insert({col.first, {col.second, index}});
+        }
+        index++;
+    }
+
+    TABLES_USED.insert({"std", "std"});
+    val true_node = new ASTNode(A_LITERAL, D_BOOL, null, null, true);
+    val node = new ASTNode(A_JOIN, D_NONE, null, true_node, String("std"));
+    return {node, from};
 }
 
 /**
@@ -1138,11 +1164,12 @@ static SelectStatement *parse_select_stmt(const String &name, Vector<WithNode> *
     stmt->with = with;
     stmt->select = parse_select();
 
+    Pair<ASTNode *, TableSet *> from_pair;
     if (peek()->type == T_FROM) {
         pop();
-        stmt->from = parse_from();
+        from_pair = parse_from();
     } else {
-        stmt->from = from_std();
+        from_pair = from_std();
     }
 
     if (peek()->type == T_WHERE) {
@@ -1150,7 +1177,7 @@ static SelectStatement *parse_select_stmt(const String &name, Vector<WithNode> *
         stmt->where = expression();
     }
 
-    validate_stmt(stmt);
+    validate_stmt(stmt, from_pair.second);
 
     if (peek()->type == T_GROUP) {
         pop();
@@ -1162,7 +1189,7 @@ static SelectStatement *parse_select_stmt(const String &name, Vector<WithNode> *
         stmt->order = parse_order_by(stmt->select);
     }
 
-    validate_stmt(stmt, true);
+    validate_stmt(stmt, from_pair.second, true);
 
     if (peek()->type == T_LIMIT) {
         pop();
@@ -1174,6 +1201,7 @@ static SelectStatement *parse_select_stmt(const String &name, Vector<WithNode> *
         TABLES.insert({name, SELECTS});
     }
 
+    stmt->from = from_pair.first;
     return stmt;
 }
 

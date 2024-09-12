@@ -36,58 +36,171 @@ static Result *prepare_data(const String &data, int col_count, char d) {
     return res;
 }
 
-static Result *apply_from(Map<String, ColumnDesc> *from, Map<String, Result *> *data) {
-    return null;
+static Cell *evaluate(Row *row, ASTNode *exp) {
+    return new Cell(true);
 }
 
+/**
+ * check if the data satisfies the condition
+ * @param row the data
+ * @param where the condition AST
+ * @return true if the data satisfies the condition, false otherwise
+ */
+static bool is_satisfy(Row *row, ASTNode *where) {
+    val cell = evaluate(row, where);
+    val value = cell->b;
+    delete cell;
+    return value;
+}
+
+/**
+ * apply FROM clause
+ * @param from from clause
+ * @param data data set of table
+ * @return data of table format
+ */
+static Result *apply_from(ASTNode *from, Map<String, Result *> *data) {
+    if (!from->left) {
+        return data->at(from->s);
+    }
+
+    val res = new Result();
+    val left = apply_from(from->left, data);
+
+    for (val &row1: *left) {
+        val right = data->at(from->s);
+        for (val &row2: *right) {
+            val new_row = new Row();
+            new_row->insert(new_row->end(), row1->begin(), row1->end());
+            new_row->insert(new_row->end(), row2->begin(), row2->end());
+            if (is_satisfy(new_row, from->right)) {
+                res->emplace_back(new_row);
+            } else {
+                delete new_row;
+            }
+        }
+    }
+
+    return res;
+}
+
+/**
+ * apply WHERE clause
+ * @param where where clause
+ * @param from data of table format
+ * @return data of table format
+ */
 static Result *apply_where(ASTNode *where, Result *from) {
     if (!where) {
         return from;
     }
-    return null;
+
+    val res = new Result();
+    for (val &row: *from) {
+        if (is_satisfy(row, where)) {
+            res->emplace_back(row);
+        }
+    }
+
+    return res;
 }
 
+/**
+ * apply GROUP BY clause
+ * @param group group clause
+ * @param where data of table format
+ * @return the grouped data of table format
+ */
 static Result *apply_group_by(Vector<ASTNode *> *group, Result *where) {
-    return null;
+    if (!group) {
+        return where;
+    }
+
+    val groups = new Map<String, String>();
+    for (var &row: *where) {
+        var key = String();
+        for (auto &col: *group) {
+            key += "├";
+            val cell = row->at(col->l);
+            switch (col->dtype) {
+                case D_STRING:
+                    key += cell->s;
+                    break;
+                case D_INT:
+                    key += to_string(cell->l);
+                    break;
+                case D_REAL:
+                    key += to_string(cell->d);
+                    break;
+                case D_BOOL:
+                    key += to_string(cell->b);
+                    break;
+                default:
+                    show_error("Cannot recognize data type of column: " + cell->s);
+            }
+        }
+
+        groups->insert({key, "group-" + to_string(groups->size())});
+        row->emplace_back(new Cell(groups->at(key)));
+    }
+
+    return where;
 }
 
-static Result *apply_select(Vector<SelectNode> *select, Result *group_by) {
-    // in group_by, col0 at every Row is the group key
-    return null;
+static Result *apply_select(Vector<SelectNode> *select, Result *group_by, bool grouped) {
+    // in group_by, last cell at every Row is the group key
+    return group_by;
 }
 
 static Result *apply_order_by(Vector<OrderNode> *order, Result *select) {
     if (!order) {
         return select;
     }
-    return null;
+    return select;
 }
 
+/**
+ * apply LIMIT clause
+ * @param limit limit clause
+ * @param order_by data of table format
+ * @return data of table format
+ */
 static Result *apply_limit(LimitNode *limit, Result *order_by) {
     if (!limit) {
         return order_by;
     }
-    return null;
+
+    if (limit->offset < order_by->size()) {
+        order_by->assign(order_by->begin() + limit->offset, order_by->end());
+
+        if (limit->count < order_by->size()) {
+            order_by->resize(limit->count);
+        }
+    } else {
+        order_by->clear();
+    }
+
+    return order_by;
 }
 
 /**
- * apply select statement, ignore the with clause(passed by data)
+ * apply SELECT statement, ignore the with clause(passed by data)
  * @param stmt select statement
  * @param data data set of table
  * @return data of table format
  */
 static Result *apply_stmt(SelectStatement *stmt, Map<String, Result *> *data) {
-    val from = apply_from(stmt->from, data); // TODO I need to support where clause with join-on
+    val from = apply_from(stmt->from, data);
     val where = apply_where(stmt->where, from);
     val group_by = apply_group_by(stmt->group, where);
-    val select = apply_select(stmt->select, group_by);
+    val select = apply_select(stmt->select, group_by, stmt->group);
     val order_by = apply_order_by(stmt->order, select);
     val limit = apply_limit(stmt->limit, order_by);
     return limit;
 }
 
 /**
- * apply with clause
+ * apply WITH clause
  * @param with with clause
  * @param pre_data prepared table data
  * @return data set of table
@@ -321,22 +434,6 @@ void verify_query(const String &query) {
     }
 }
 
-static void free_result(Result *result) {
-    if (!result) {
-        return;
-    }
-    for (val &row: *result) {
-        if (!row) {
-            continue;
-        }
-        for (val &cell: *row) {
-            delete cell;
-        }
-        delete row;
-    }
-    delete result;
-}
-
 Vector<Vector<String>> process_data(const ProgramOptions &options) {
     // init column names
     // val col_count = get_col_count(options);
@@ -382,13 +479,6 @@ Result *apply(SelectStatement *query, const String &data, int col_count, char d)
     val pre_data = prepare_data(data, col_count, d);
     val with_data = apply_with(query->with, pre_data);
     val res = apply_stmt(query, with_data);
-
-    // free with_data
-    for (val &result: *with_data) {
-        free_result(result.second);
-    }
-    with_data->clear();
-    delete with_data;
 
     return res;
 }

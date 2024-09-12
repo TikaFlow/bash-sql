@@ -99,4 +99,8 @@ namespace util {
         iss >> value;
         return iss.eof() && !iss.fail();
     }
+
+    void dump_ast(ASTNode *node, const String &indent = "") {
+        cout << "implement it later" << endl;
+    }
 }

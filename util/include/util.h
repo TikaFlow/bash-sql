@@ -11,6 +11,7 @@
 #include <sstream>
 #include <algorithm>
 #include "global.h"
+#include "defs.h"
 
 namespace util {
     String ltrim(const String &str);
@@ -36,6 +37,8 @@ namespace util {
     bool is_integer(const String &str);
 
     bool is_double(const String &str);
+
+    void dump_ast(ASTNode *node, const String &indent);
 }
 
 using namespace util;

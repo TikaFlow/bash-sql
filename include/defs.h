@@ -26,7 +26,7 @@ typedef enum {
     T_EQ, T_NE1, T_NE2, T_LT, T_GT, T_LE, T_GE,
     T_LPAREN, T_RPAREN, T_COMMA, T_SEMICOLON,
     T_INTEGER, T_REAL, T_STRING, T_IDENTIFIER,
-    T_SELECT, T_AS, T_FROM, T_WHERE,
+    T_SELECT, T_AS, T_FROM, T_JOIN, T_ON, T_WHERE,
     T_GROUP, T_BY, T_ORDER, T_ASC, T_DESC, T_IN, T_OFFSET, T_LIMIT,
     T_AND, T_OR, T_NOT, T_LIKE, T_IS, T_NULL, T_WITH,
 } TokenType;
@@ -38,6 +38,7 @@ typedef enum {
 } DataType;
 
 typedef enum {
+    A_JOIN,
     A_FUNC_CALL, A_PARAM, A_LITERAL, A_COLUMN,
     A_ADD, A_SUB, A_MUL, A_DIV, A_MOD,
     A_EQ, A_NE, A_LT, A_GT, A_LE, A_GE, A_AND, A_OR,
@@ -48,6 +49,7 @@ typedef enum {
 using ColumnDesc = Pair<DataType, int>;
 // column name, columns type
 using Table = Vector<Pair<String, DataType>>;
+using TableSet = Map<String, ColumnDesc>;
 
 struct Token {
     TokenType type;
@@ -131,7 +133,14 @@ struct LimitNode {
 struct SelectStatement {
     Vector<WithNode> *with;
     Vector<SelectNode> *select;
-    Map<String, ColumnDesc> *from;
+    /**
+     *      join
+     *     /   \
+     *   join   on(condition)
+     *   /   \
+     * ...   on(condition)
+     */
+    ASTNode *from;
     ASTNode *where;
     Vector<ASTNode *> *group;
     Vector<OrderNode> *order;
