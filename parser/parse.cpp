@@ -114,15 +114,10 @@ static void cast_string(ASTNode *node) {
         return;
     }
 
-    val &str = node->s;
-    if (is_integer(str)) {
-        val value = stol(str);
-        node->l = value;
-        node->dtype = D_INT;
-    } else if (is_double(str)) {
-        val value = stod(str);
-        node->d = value;
-        node->dtype = D_REAL;
+    val &str = node->text;
+    if (is_double(str)) {
+        node->number = stod(str);
+        node->dtype = D_NUMBER;
     } else {
         show_error("cannot convert string to number: " + str);
     }
@@ -168,22 +163,6 @@ static DataType repair_type(ASTNode *left, ASTNode *right, ASTType op_type) {
 
         if (left_type == D_BOOL || right_type == D_BOOL) {
             show_error("incompatible operands");
-        }
-
-        if (op_type == A_MOD) {
-            if (left_type != D_INT || right_type != D_INT) {
-                show_error("incompatible operands of modulo operator");
-            }
-        }
-
-        // if there is a determined D_REAL, then we get D_REAL
-        if (left_type == D_REAL || right_type == D_REAL) {
-            return D_REAL;
-        }
-
-        // if both are D_INT, then we get D_INT
-        if (left_type == D_INT && right_type == D_INT) {
-            return D_INT;
         }
 
         return D_NUMBER;
@@ -261,10 +240,10 @@ static ASTNode *primary() {
     var tk = pop();
     switch (tk->type) {
         case T_INTEGER:
-            node = new ASTNode(A_LITERAL, D_INT, null, null, tk->integer);
+            node = new ASTNode(A_LITERAL, D_NUMBER, null, null, tk->integer);
             break;
         case T_REAL:
-            node = new ASTNode(A_LITERAL, D_REAL, null, null, tk->real);
+            node = new ASTNode(A_LITERAL, D_NUMBER, null, null, tk->real);
             break;
         case T_STRING:
             node = new ASTNode(A_LITERAL, D_STRING, null, null, tk->text);
@@ -583,96 +562,70 @@ static void constant_fold(ASTNode *node) {
     }
 
     // till now, left and right(if there has) are both literal, and string literal has been converted
-    double lv = node->left->dtype == D_INT ? (double) node->left->l : node->left->d;
-    double rv = node->right->dtype == D_INT ? (double) node->right->l : node->right->d;
-    long ll = node->left->l;
-    long rl = node->right->l;
-
-    long dl = 1;
-    double dd = 1.0;
-    if (node->dtype == D_INT) {
-        dl = node->left->l - node->right->l;
-    } else {
-        dd = lv - rv;
+    if (node->left->dtype == D_STRING) {
+        return;
     }
-    dd = (double) dl * dd;
-    switch (node->atype) {
+    if (node->right && node->right->dtype == D_STRING) {
+        return;
+    }
+
+    switch (node->atype) { // never be A_LIKE
         /*
          * A_ADD, A_SUB, A_MUL, A_DIV, A_MOD,
          * A_EQ, A_NE, A_LT, A_GT, A_LE, A_GE, A_AND, A_OR,
-         * A_NEGATE, A_NOT, A_ISNULL, A_NOTNULL,
+         * A_NEGATE, A_NOT, A_ISNULL,
          */
         case A_ADD:
-            if (node->dtype == D_INT) {
-                node->l = node->left->l + node->right->l;
-            } else {
-                node->d = lv + rv;
-            }
+            node->number = node->left->number + node->right->number;
             break;
         case A_SUB:
-            if (node->dtype == D_INT) {
-                node->l = node->left->l - node->right->l;
-            } else {
-                node->d = lv - rv;
-            }
+            node->number = node->left->number - node->right->number;
             break;
         case A_MUL:
-            if (node->dtype == D_INT) {
-                node->l = node->left->l * node->right->l;
-            } else {
-                node->d = lv * rv;
-            }
+            node->number = node->left->number * node->right->number;
             break;
         case A_DIV:
-            if (node->dtype == D_INT) {
-                node->l = node->left->l / node->right->l;
-            } else {
-                node->d = lv / rv;
-            }
+            node->number = node->left->number / node->right->number;
             break;
         case A_MOD:
-            node->l = node->left->l % node->right->l;
+            node->number = fmod(node->left->number, node->right->number);
             break;
         case A_EQ:
-            node->b = dd == 0;
+            node->number = node->left->number == node->right->number;
             break;
         case A_NE:
-            node->b = dd != 0;
+            node->number = node->left->number != node->right->number;
             break;
         case A_LT:
-            node->b = dd < 0;
+            node->number = node->left->number < node->right->number;
             break;
         case A_GT:
-            node->b = dd > 0;
+            node->number = node->left->number > node->right->number;
             break;
         case A_LE:
-            node->b = dd <= 0;
+            node->number = node->left->number <= node->right->number;
             break;
         case A_GE:
-            node->b = dd >= 0;
+            node->number = node->left->number >= node->right->number;
             break;
         case A_AND:
-            node->b = node->left->b && node->right->b;
+            node->number = (bool) node->left->number && (bool) node->right->number;
             break;
         case A_OR:
-            node->b = node->left->b || node->right->b;
+            node->number = (bool) node->left->number || (bool) node->right->number;
             break;
         case A_NEGATE:
-            if (node->dtype == D_INT) {
-                node->l = -node->left->l;
-            } else { // then must be D_REAL
-                node->d = -node->left->d;
-            }
+            node->number = -node->left->number;
             break;
         case A_NOT:
-            node->b = !node->left->b;
+            node->number = node->left->number == 0;
             break;
         case A_ISNULL:
             // only string literal can be null
-            node->b = node->left->dtype == D_STRING && node->left->s.empty();
+            node->number = node->left->dtype == D_STRING && node->left->text.empty();
             break;
         default:
-            break;
+            break; // make compiler happy
     }
 
     release_node(&node->left);
@@ -686,28 +639,28 @@ static void constant_fold(ASTNode *node) {
  */
 static void circuit_and(ASTNode *node) {
     if (node->left->atype == A_LITERAL) {
-        if (node->left->b) {
+        if ((bool) node->left->number) {
             node->atype = node->right->atype;
-            node->b = node->right->b; // must be D_BOOL, so we copy b
             node->left = node->right->left;
             node->right = node->right->right;
-            node->s = node->right->s;
+            node->number = node->right->number;
+            node->text = node->right->text;
         } else {
             node->atype = A_LITERAL;
-            node->b = false;
+            node->number = false;
         }
         release_node(&node->left);
         release_node(&node->right);
     } else if (node->right->atype == A_LITERAL) {
-        if (node->right->b) {
+        if ((bool) node->right->number) {
             node->atype = node->left->atype;
-            node->b = node->left->b;
             node->left = node->left->left;
             node->right = node->left->right;
-            node->s = node->left->s;
+            node->number = node->left->number;
+            node->text = node->left->text;
         } else {
             node->atype = A_LITERAL;
-            node->b = false;
+            node->number = false;
         }
         release_node(&node->left);
         release_node(&node->right);
@@ -720,28 +673,28 @@ static void circuit_and(ASTNode *node) {
  */
 static void circuit_or(ASTNode *node) {
     if (node->left->atype == A_LITERAL) {
-        if (node->left->b) {
+        if ((bool) node->left->number) {
             node->atype = A_LITERAL;
-            node->b = true;
+            node->number = true;
         } else {
             node->atype = node->right->atype;
-            node->b = node->right->b;
             node->left = node->right->left;
             node->right = node->right->right;
-            node->s = node->right->s;
+            node->number = node->right->number;
+            node->text = node->right->text;
         }
         release_node(&node->left);
         release_node(&node->right);
     } else if (node->right->atype == A_LITERAL) {
-        if (node->right->b) {
+        if ((bool) node->right->number) {
             node->atype = A_LITERAL;
-            node->b = true;
+            node->number = true;
         } else {
             node->atype = node->left->atype;
-            node->b = node->left->b;
             node->left = node->left->left;
             node->right = node->left->right;
-            node->s = node->left->s;
+            node->number = node->left->number;
+            node->text = node->left->text;
         }
         release_node(&node->left);
         release_node(&node->right);
@@ -793,15 +746,15 @@ static void check_ast(TableSet *from, ASTNode *node) {
     }
 
     if (node->atype == A_COLUMN) { // if it is a column
-        if (!from->count(node->s)) {
-            show_error("Column not found: " + node->s);
+        if (!from->count(node->text)) {
+            show_error("Column not found: " + node->text);
         }
-        val desc = from->at(node->s);
+        val desc = from->at(node->text);
         node->dtype = desc.first; // repair type
         if (desc.second != -1) {
-            node->l = desc.second; // save col index
+            node->number = desc.second; // save col index
         } else {
-            show_error("Ambiguous column: " + node->s);
+            show_error("Ambiguous column: " + node->text);
         }
     } else if (node->atype == A_PARAM) { // if it is a param
         node->dtype = node->right->dtype;
@@ -823,8 +776,8 @@ static void validate_select(TableSet *from, Vector<SelectNode> *select) {
     for (int i = 0; i < select->size(); i++) {
         val &col = select->at(i).col;
 
-        if (col->atype == A_COLUMN && resolve_column(col->s)->second == "*") {
-            val count = expand_star(select, i, resolve_column(col->s)->first);
+        if (col->atype == A_COLUMN && resolve_column(col->text)->second == "*") {
+            val count = expand_star(select, i, resolve_column(col->text)->first);
             i += count - 1;
         }
     }
@@ -838,7 +791,7 @@ static void validate_select(TableSet *from, Vector<SelectNode> *select) {
         if (!name.empty()) {
             ALIAS[name] = index;
         } else if (col_exp.col->atype == A_COLUMN) {
-            name = resolve_column(col_exp.col->s)->second;
+            name = resolve_column(col_exp.col->text)->second;
             col_exp.as = name;
         }
 
@@ -877,13 +830,14 @@ static void validate_group_by(TableSet *from, Vector<SelectNode> *select, Vector
     for (val &col: *group) {
         if (col->atype == A_COLUMN) {
             check_ast(from, col);
-        } else if (col->atype == A_LITERAL && col->dtype == D_INT && col->l > 0 && col->l < select->size()) {
-            val column = select->at(col->l - 1).col;
+        } else if (col->atype == A_LITERAL && col->dtype == D_NUMBER
+                   && col->number > 0 && (int) col->number < select->size()) {
+            val column = select->at((int) col->number - 1).col;
             if (column->atype == A_COLUMN) {
                 col->atype = column->atype;
                 col->dtype = column->dtype;
-                col->l = column->l;
-                col->s = column->s;
+                col->number = column->number;
+                col->text = column->text;
             } else {
                 show_error("Group by clause must be a column");
             }
@@ -943,7 +897,7 @@ static Vector<SelectNode> *parse_select() {
 
         val col = expression();
         if (col->atype == A_COLUMN) {
-            val col_name = resolve_column(col->s)->second;
+            val col_name = resolve_column(col->text)->second;
             if (col_name != "*") {
                 as = col_name;
             } else {
@@ -1104,7 +1058,7 @@ static Vector<OrderNode> *parse_order_by(Vector<SelectNode> *stmt) {
     do {
         var token = pop();
         if (token->type == T_INTEGER) {
-            order = (int) token->integer - 1;
+            order = token->integer - 1;
         } else if (token->type == T_IDENTIFIER) {
             order = parse_order_col(token->text);
         } else {
@@ -1135,20 +1089,20 @@ static Vector<OrderNode> *parse_order_by(Vector<SelectNode> *stmt) {
  */
 static LimitNode *parse_limit() {
     val node = new LimitNode();
-    long count = match(T_INTEGER, "integer")->integer, offset = 0;
+    int count = match(T_INTEGER, "integer")->integer, offset = 0;
     TokenType type = peek()->type;
     if (type == T_COMMA || type == T_OFFSET) {
         pop(); // comma/offset
         offset = match(T_INTEGER, "integer")->integer;
         if (type == T_COMMA) {
-            long temp = offset;
+            int temp = offset;
             offset = count;
             count = temp;
         }
     }
 
-    node->count = (int) count;
-    node->offset = (int) offset;
+    node->count = count;
+    node->offset = offset;
 
     return node;
 }

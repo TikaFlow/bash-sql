@@ -57,65 +57,127 @@ static void free_result(Result *result) {
 }
 
 /**
- * match type of two cells
- * @param ltype left type
- * @param rtype right type
+ * repair to number type of cell
+ * @param cell the cell
+ */
+static void repair_cell(Cell *cell) {
+    if (!cell) {
+        return;
+    }
+
+    if (cell->type == D_BOOL) {
+        show_error("require numbers, but got bool");
+    }
+
+    if (cell->type == D_STRING) {
+        if (is_double(cell->text)) {
+            cell->type = D_NUMBER;
+            cell->number = stod(cell->text);
+        } else {
+            show_error("require numbers, but got string");
+        }
+    }
+}
+
+/**
+ * repair type of two cells
+ * @param left left cell
+ * @param right right cell
  * @return matched type
  */
-static DataType match_type(DataType ltype, DataType rtype) {
-    if (ltype == D_REAL || rtype == D_REAL) {
-        return D_REAL;
-    }
-    return D_INT;
+static DataType repair_type(Cell *left, Cell *right) {
+    repair_cell(left);
+    repair_cell(right);
+
+    return D_NUMBER;
 }
 
+/**
+ * evaluate mathematical expression
+ * @param cell result cell
+ * @param left left cell
+ * @param right right cell
+ * @param atype expression type
+ */
 static void calc_math(Cell *cell, Cell *left, Cell *right, ASTType atype) {
-    if (atype == A_NEGATE) {
-        cell->type = left->type;
-    } else {
-        cell->type = match_type(left->type, right->type);
+    cell->type = repair_type(left, right);
+
+    switch (atype) {
+        case A_ADD:
+            cell->number = left->number + right->number;
+            break;
+        case A_SUB:
+            cell->number = left->number - right->number;
+            break;
+        case A_MUL:
+            cell->number = left->number * right->number;
+            break;
+        case A_DIV:
+            cell->number = left->number / right->number;
+            break;
+        case A_MOD:
+            cell->number = fmod(left->number, right->number);
+            break;
+        default:
+            break; // make compiler happy
     }
 }
 
+/**
+ * evaluate logical expression
+ * @param cell result cell
+ * @param left left cell
+ * @param right right cell
+ * @param atype expression type
+ */
 static void calc_logic(Cell *cell, Cell *left, Cell *right, ASTType atype) {
     cell->type = D_BOOL;
-    var cmp = 0.0;
-    if (atype < A_AND) {
-        cmp = left->d - right->d; // to be improved
-    }
     switch (atype) {
         case A_EQ:
-            cell->b = cmp == 0;
-            break;
         case A_NE:
-            cell->b = cmp != 0;
+            if (left->type == D_STRING && right->type == D_STRING) {
+                if (atype == A_EQ) {
+                    cell->number = left->text == right->text;
+                } else {
+                    cell->number = left->text != right->text;
+                }
+                break;
+            } else if (left->type == D_STRING || right->type == D_STRING) {
+                repair_type(left, right);
+            }
+
+            if (atype == A_EQ) {
+                cell->number = left->number == right->number;
+            } else {
+                cell->number = left->number != right->number;
+            }
             break;
         case A_LT:
-            cell->b = cmp < 0;
+            cell->number = left->number < right->number;
             break;
         case A_GT:
-            cell->b = cmp > 0;
+            cell->number = left->number > right->number;
             break;
         case A_LE:
-            cell->b = cmp <= 0;
+            cell->number = left->number <= right->number;
             break;
         case A_GE:
-            cell->b = cmp >= 0;
+            cell->number = left->number >= right->number;
             break;
         case A_AND:
-            cell->b = left->b && right->b;
+            cell->number = (bool) left->number && (bool) right->number;
             break;
         case A_OR:
-            cell->b = left->b || right->b;
+            cell->number = (bool) left->number || (bool) right->number;
             break;
         case A_NOT:
-            cell->b = !left->b;
+            cell->number = left->number == 0;
             break;
         case A_ISNULL:
             if (left->type == D_STRING) {
-                cell->b = left->s.empty();
+                cell->number = left->text.empty();
             } else {
-                cell->b = left->s == "<null>";
+                cell->number = left->text == "<null>";
             }
             break;
         default:
@@ -123,9 +185,43 @@ static void calc_logic(Cell *cell, Cell *left, Cell *right, ASTType atype) {
     }
 }
 
-static void calc_like(Cell *cell, Cell *left) {
+/**
+ * evaluate like expression
+ * @param cell result cell
+ * @param data data cell
+ * @param like like cell
+ */
+static void calc_like(Cell *cell, Cell *data, Cell *like) {
+    var reg_exp = String("^");
+    var esc = false;
+    for (char c: like->text) {
+        if (esc) {
+            reg_exp += String(1, c);
+            esc = false;
+        } else if (c == '\\') {
+            esc = true;
+        } else if (c == '%') {
+            reg_exp += ".*";
+        } else if (c == '_') {
+            reg_exp += ".";
+        } else {
+            reg_exp += c;
+        }
+    }
+    reg_exp += "$";
+
+    val reg = Regex(reg_exp);
+    cell->type = D_BOOL;
+    cell->number = std::regex_match(data->text, reg);
 }
 
+/**
+ * evaluate expression
+ * @param row data to be evaluated
+ * @param exp expression
+ * @return result cell
+ * @todd some nodes are not implemented
+ */
 static Cell *evaluate(Row *row, ASTNode *exp) {
     if (!exp) {
         return null;
@@ -134,25 +230,25 @@ static Cell *evaluate(Row *row, ASTNode *exp) {
     val right = evaluate(row, exp->right);
 
     val cell = new Cell();
-    /*
-     * A_FUNC_CALL, A_PARAM, A_LITERAL, A_COLUMN,
-     * A_ADD, A_SUB, A_MUL, A_DIV, A_MOD,
-     * A_EQ, A_NE, A_LT, A_GT, A_LE, A_GE, A_AND, A_OR,
-     * A_NEGATE, A_NOT, A_ISNULL, A_LIKE, // unary operator
-     */
     switch (exp->atype) { // never be A_JOIN
+        /*
+         * A_FUNC_CALL, A_PARAM, A_LITERAL, A_COLUMN,
+         * A_ADD, A_SUB, A_MUL, A_DIV, A_MOD,
+         * A_EQ, A_NE, A_LT, A_GT, A_LE, A_GE, A_AND, A_OR,
+         * A_NEGATE, A_NOT, A_ISNULL, A_LIKE,
+         */
         case A_FUNC_CALL:
         case A_PARAM:
             break; // to be implemented
         case A_LITERAL:
             cell->type = exp->dtype;
-            cell->d = exp->d; // l or b are also set
-            cell->s = exp->s;
+            cell->number = exp->number;
+            cell->text = exp->text;
             break;
         case A_COLUMN:
-            cell->type = row->at(exp->l)->type;
-            cell->d = row->at(exp->l)->d;
-            cell->s = row->at(exp->l)->s;
+            cell->type = row->at((int) exp->number)->type;
+            cell->number = row->at((int) exp->number)->number;
+            cell->text = row->at((int) exp->number)->text;
             break;
         case A_ADD:
         case A_SUB:
@@ -175,7 +271,7 @@ static Cell *evaluate(Row *row, ASTNode *exp) {
             calc_logic(cell, left, right, exp->atype);
             break;
         case A_LIKE:
-            calc_like(cell, left);
+            calc_like(cell, left, right);
             break;
         default:
             break; // make compiler happy
@@ -192,7 +288,7 @@ static Cell *evaluate(Row *row, ASTNode *exp) {
  */
 static bool is_satisfy(Row *row, ASTNode *where) {
     val cell = evaluate(row, where);
-    val value = cell->b;
+    val value = cell->number > 0;
     delete cell;
     return value;
 }
@@ -205,14 +301,14 @@ static bool is_satisfy(Row *row, ASTNode *where) {
  */
 static Result *apply_from(ASTNode *from, Map<String, Result *> *data) {
     if (!from->left) {
-        return data->at(from->s);
+        return data->at(from->text);
     }
 
     val res = new Result();
     val left = apply_from(from->left, data);
+    val right = data->at(from->text);
 
     for (val &row1: *left) {
-        val right = data->at(from->s);
         for (val &row2: *right) {
             val new_row = new Row();
             new_row->insert(new_row->end(), row1->begin(), row1->end());
@@ -270,22 +366,17 @@ static Map<String, Result *> *apply_group_by(Vector<ASTNode *> *group, Result *w
         var key = String();
         for (auto &col: *group) {
             key += "├";
-            val cell = row->at(col->l);
+            val cell = row->at((int) col->number);
             switch (col->dtype) {
                 case D_STRING:
-                    key += cell->s;
+                    key += cell->text;
                     break;
-                case D_INT:
-                    key += to_string(cell->l);
-                    break;
-                case D_REAL:
-                    key += to_string(cell->d);
-                    break;
+                case D_NUMBER:
                 case D_BOOL:
-                    key += to_string(cell->b);
+                    key += to_string(cell->number);
                     break;
                 default:
-                    show_error("Cannot recognize data type of column: " + cell->s);
+                    show_error("Cannot recognize data type of column: " + cell->text);
             }
         }
 
@@ -303,12 +394,30 @@ static Map<String, Result *> *apply_group_by(Vector<ASTNode *> *group, Result *w
     return groups;
 }
 
+/**
+ * apply SELECT clause
+ * @param select select clause
+ * @param group_by data of table format in groups
+ * @return data of table format
+ */
 static Result *apply_select(Vector<SelectNode> *select, Map<String, Result *> *group_by) {
+    val res = new Result();
+
+    Result *group;
     if (group_by->size() == 1 && group_by->begin()->first == "group--1") {
-        return group_by->at("group--1");
+        group = group_by->at("group--1");
+
+        for (val &row: *group) {
+            val new_row = new Row();
+            for (val &node: *select) {
+                val new_cell = evaluate(row, node.col);
+                new_row->emplace_back(new_cell);
+            }
+            res->emplace_back(new_row);
+        }
     }
 
-    return group_by->at("group-0");
+    return res;
 }
 
 /**
@@ -332,16 +441,11 @@ static Result *apply_order_by(Vector<OrderNode> *order, Result *select) {
 
             switch (type) {
                 case D_STRING:
-                    od = a->at(idx)->s.compare(b->at(idx)->s);
+                    od = a->at(idx)->text.compare(b->at(idx)->text);
                     break;
-                case D_INT:
-                    od = compare_integer(a->at(idx)->l, b->at(idx)->l);
-                    break;
-                case D_REAL:
-                    od = compare_double(a->at(idx)->d, b->at(idx)->d);
-                    break;
+                case D_NUMBER:
                 case D_BOOL:
-                    od = to_string(a->at(idx)->b).compare(to_string(b->at(idx)->b));
+                    od = compare_number(a->at(idx)->number, b->at(idx)->number);
                     break;
                 default:
                     show_error("Internal error when sorting");
@@ -423,245 +527,6 @@ static Map<String, Result *> *apply_with(Vector<WithNode> *with, Result *pre_dat
     return res;
 }
 
-Vector<String> exec_select(const Vector<String> &title, const Vector<String> &row,
-                           const String &select) {
-    Vector<String> new_row;
-
-    // val cols = split_string(select, ',');
-    // for (val &col: cols) {
-    //     if (trim(col) == "*") {
-    //         new_row.insert(new_row.end(), row.begin(), row.end());
-    //         continue;
-    //     }
-    //
-    //     val reg = Regex(R"(\s+(AS|as)\s+)");
-    //     std::smatch match;
-    //     using std::regex_search;
-    //     val pos = regex_search(col, match, reg) ? match.position(0) : npos;
-    //     val old_col = pos == npos ? trim(col) : trim(col.substr(0, pos));
-    //     val idx = std::find(title.begin(), title.end(), old_col);
-    //     val new_col = row[std::distance(title.begin(), idx)];
-    //     new_row.push_back(new_col);
-    // }
-    return new_row;
-}
-
-bool exec_where(const Vector<String> &title, const Vector<String> &row, const String &where) {
-    // if (where.empty()) {
-    //     return true;
-    // }
-    //
-    // val clauses = split_string_by_spaces(where);
-    // if (clauses.size() < 3) {
-    //     show_error("Unknown error.");
-    // }
-    // val &col = clauses[0];
-    // val col_at = std::distance(title.begin(), std::find(title.begin(), title.end(), col));
-    // if (col_at >= title.size()) {
-    //     show_error("Column '" + col + "' not found.");
-    // }
-    // val &col_value = row[col_at];
-    // val NOT = clauses.size() == 4;
-    // val &type = clauses[clauses.size() - 2];
-    // var pattern_str = clauses[clauses.size() - 1];
-    //
-    // if (type == "LIKE" || type == "like") {
-    //     replace_all(pattern_str, "\\%", "@");
-    //     replace_all(pattern_str, "%", ".*");
-    //     replace_all(pattern_str, "@", "%");
-    //
-    //     replace_all(pattern_str, "\\_", "@");
-    //     replace_all(pattern_str, "_", ".");
-    //     replace_all(pattern_str, "@", "_");
-    // } else if (type != "REG" && type != "reg") {
-    //     show_error("Unknown error.");
-    // }
-    //
-    // Regex reg = Regex(pattern_str);
-    // val res = std::regex_match(col_value, reg);
-    //
-    // return NOT ^ res;
-    return true;
-}
-
-Vector<String> handle_title(const Vector<String> &title, const String &select) {
-    Vector<String> new_title;
-
-    // val cols = split_string(select, ',');
-    // for (val &col: cols) {
-    //     if (trim(col) == "*") {
-    //         new_title.insert(new_title.end(), title.begin(), title.end());
-    //         continue;
-    //     }
-    //     val reg = Regex(R"(\s+(AS|as)\s+)");
-    //     std::smatch match;
-    //     using std::regex_search;
-    //     val pos = regex_search(col, match, reg) ? match.position(0) : npos;
-    //     if (pos != npos && pos >= col.size() - 4) {
-    //         show_error("Syntax error near '" + col + "'.");
-    //     }
-    //     val old_col = pos == npos ? trim(col) : trim(col.substr(0, pos));
-    //     val idx = std::find(title.begin(), title.end(), old_col);
-    //     if (idx == title.end()) {
-    //         show_error("Column '" + old_col + "' not found");
-    //     }
-    //     val alias = pos == npos ? "" : trim(col.substr(pos + match.str().size()));
-    //     val new_col = alias.empty() ? old_col : alias;
-    //
-    //     for_each(new_title.begin(), new_title.end(), [&new_col](const String &s) {
-    //         if (new_col == s) show_error("Duplicate column name '" + new_col + "'.");
-    //     });
-    //
-    //     new_title.push_back(new_col);
-    // }
-    return new_title;
-}
-
-Vector<Pair<int, bool>> check_orders(const Vector<String> &data, const Vector<String> &orders) {
-    Vector<Pair<int, bool>> sort_order;
-    // for (val &order: orders) {
-    //     val cols = split_string_by_spaces(trim(order));
-    //     if (cols.size() > 2) {
-    //         show_error("Syntax error near '" + order + "'.");
-    //     }
-    //     val &col = cols[0];
-    //     val idx = std::distance(data.begin(), std::find(data.begin(), data.end(), col));
-    //     if (idx >= data.size()) {
-    //         show_error("Column '" + col + "' not found.");
-    //     }
-    //
-    //     val direction = cols.size() == 2 ? cols[1] : "";
-    //     val asc = direction.empty() || direction == "ASC" || direction == "asc";
-    //
-    //     sort_order.emplace_back(idx, asc);
-    // }
-
-    return sort_order;
-}
-
-void sort_data(Vector<Vector<String>> &data, const String &order) {
-    // if (order.empty()) {
-    //     return;
-    // }
-    // val orders = split_string(order, ',');
-    // val sort_order = check_orders(data[0], orders);
-    //
-    // std::sort(data.begin() + 1, data.end(),
-    //           [&sort_order](const Vector<String> &a, const Vector<String> &b) -> bool {
-    //               var res = false;
-    //               for (val &order: sort_order) {
-    //                   val o = a[order.first].compare(b[order.first]);
-    //                   if (o == 0) {
-    //                       continue;
-    //                   }
-    //                   res = o > 0;
-    //                   return order.second ^ res;
-    //               }
-    //               return false;
-    //           });
-}
-
-Vector<Vector<String>> process_query(const Vector<Vector<String>> &input,
-                                     const String &query) {
-
-    // cut query
-    std::smatch match;
-    using std::regex_search;
-    val limit_reg = Regex(R"(\s+(LIMIT|limit)\s+)");
-    val order_reg = Regex(R"(\s+(ORDER|order)\s+(BY|by)\s+)");
-    val where_reg = Regex(R"(\s+(WHERE|where)\s+)");
-
-    var test = regex_search(query, match, limit_reg);
-    val limits_pos = test ? match.position(0) : npos;
-    val limits = trim(limits_pos != npos ? query.substr(limits_pos + match.str(0).size()) : "");
-    var offset = 0, limit = 0;
-    if (!limits.empty()) {
-        val offset_pos = limits.find(',');
-        offset = offset_pos != npos ? stoi(trim(limits.substr(0, offset_pos))) : 0;
-        limit = stoi(trim(offset_pos != npos ? limits.substr(offset_pos + 1) : limits));
-
-        // when specify limits, limit cannot be zero
-        if (!limit) {
-            show_warn("Zero limits will be ignored...");
-        }
-    }
-    var rest = query.substr(0, limits_pos);
-
-    val order_pos = regex_search(query, match, order_reg) ? match.position(0) : npos;
-    val order = trim(order_pos != npos ? rest.substr(order_pos + match.str(0).size()) : "");
-    rest = rest.substr(0, order_pos);
-
-    val where_pos = regex_search(query, match, where_reg) ? match.position(0) : npos;
-    val where = trim(where_pos != npos ? rest.substr(where_pos + match.str(0).size()) : "");
-    val select = trim(rest.substr(0, where_pos).substr(7));
-    // cut query end
-
-    Vector<Vector<String>> output;
-    val new_title = handle_title(input[0], select);
-    output.push_back(new_title);
-    for (var i = 1; i < input.size(); i++) {
-        // 1. where
-        if (exec_where(input[0], input[i], where)) {
-            // 2. select
-            var new_row = exec_select(input[0], input[i], select);
-            output.push_back(new_row);
-        }
-    }
-    // 3. order by
-    sort_data(output, order);
-    // 4. limit
-    if (limit > 0) {
-        // offset
-        if (offset > 0) {
-            if (offset < output.size()) {
-                output.erase(output.begin() + 1, output.begin() + offset + 1);
-            } else {
-                output.clear();
-            }
-        }
-        // limit
-        if (limit + 1 < output.size()) {
-            output.resize(limit + 1);
-        }
-    }
-
-    return output;
-}
-
-void verify_query(const String &query) {
-    val reg = Regex(
-            R"((SELECT|select)\s+((([\w_][\w_\d]+)(\s+(AS|as)\s+([\w_][\w_\d]+))?)|\*)(\s*,\s*((([\w_][\w_\d]+)(\s+(AS|as)\s+([\w_][\w_\d]+))?)|\*))*(\s+(WHERE|where)\s+([\w_][\w_\d]+)(\s+(NOT|not))?\s+((LIKE|like)\s+((\\)?[%_]|[\d\w_])+|(REG|reg)\s+.+))?(\s+(ORDER|order)\s+(BY|by)\s+([\w_][\w_\d]+)(\s+(ASC|asc|DESC|desc))?(\s*,\s*([\w_][\w_\d]+)(\s+(ASC|asc|DESC|desc))?)*)?(\s+(LIMIT|limit)\s+(\d+)(\s*,\s*\d+)?)?)");
-    if (!std::regex_match(trim(query), reg)) {
-        show_error("Unrecognized query statement: '" + query + "'");
-    }
-}
-
-Vector<Vector<String>> process_data(const ProgramOptions &options) {
-    // init column names
-    // val col_count = get_col_count(options);
-    // Vector<String> col_names(col_count);
-    // for (var i = 0; i < col_count; i++) {
-    //     col_names[i] = "col" + to_string(i + 1);
-    // }
-    //
-    // // prepare data to be processed
-    // Vector<Vector<String>> output;
-    // output.push_back(col_names);
-    // prepare_data(options.data, output, options.delimiter);
-    // if (!trim(options.query).empty()) {
-    //     // Split the query into multiple queries
-    //     val queries = split_string(options.query, '|');
-    //
-    //     for (val &query: queries) {
-    //         verify_query(query);
-    //         output = process_query(output, query);
-    //     }
-    // }
-    //
-    // return output;
-    return {};
-}
-
 /**
  * Apply one query to the data
  * @param query the query AST
@@ -683,11 +548,11 @@ Result *apply(SelectStatement *query, const String &data, int col_count, char d)
     val res = apply_stmt(query, with_data);
 
     // free with_data
-    // for (val &result: *with_data) {
-    //     free_result(result.second);
-    // }
-    // with_data->clear();
-    // delete with_data;
+    for (val &result: *with_data) {
+        free_result(result.second);
+    }
+    with_data->clear();
+    delete with_data;
 
     return res;
 }

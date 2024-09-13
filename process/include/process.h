@@ -14,22 +14,14 @@ using Result = Vector<Row *>;
 
 struct Cell {
     DataType type;
-    union {
-        long l;
-        double d;
-        bool b;
-    };
-    String s;
+    double number = 0;
+    String text;
 
-    explicit Cell() : type(D_NONE), l(0) {};
+    Cell() : type(D_NONE) {};
 
-    explicit Cell(long l) : type(D_INT), l(l) {};
+    explicit Cell(double num) : type(D_NUMBER), number(num) {};
 
-    explicit Cell(double d) : type(D_REAL), d(d) {};
-
-    explicit Cell(bool b) : type(D_BOOL), b(b) {};
-
-    explicit Cell(String s) : type(D_STRING), s(std::move(s)), l(0) {};
+    explicit Cell(String str) : type(D_STRING), text(std::move(str)) {};
 };
 
 Result *apply(SelectStatement *query, const String &data, int col_count, char d);

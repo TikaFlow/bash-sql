@@ -5,6 +5,8 @@
 #ifndef BASH_SQL_DEFS_H
 #define BASH_SQL_DEFS_H
 
+#include <cmath>
+
 /**
  * select statement
  * @note writing order: with -> select -> from -> where -> group -> order -> limit
@@ -32,9 +34,8 @@ typedef enum {
 } TokenType;
 
 typedef enum {
-    D_NONE, // represents to be determined
-    D_STRING, D_INT, D_REAL, D_BOOL,
-    D_NUMBER, // in function, check if is real or int
+    D_NONE, // no type, or to be determined
+    D_STRING, D_BOOL, D_NUMBER,
 } DataType;
 
 typedef enum {
@@ -54,7 +55,7 @@ using TableSet = Map<String, ColumnDesc>;
 struct Token {
     TokenType type;
     union {
-        long integer; // for T_INTEGER
+        int integer; // for T_INTEGER
         double real; // for T_REAL
     };
     // for T_STRING or T_IDENTIFIER, its name; for other, its description
@@ -67,27 +68,17 @@ struct ASTNode {
     DataType dtype;
     ASTNode *left;
     ASTNode *right;
-    union {
-        long l;
-        double d;
-        bool b;
-    }; // value
-    String s;
+    double number = 0;
+    String text; // when d_number, "<null>"; when d_string, its value
 
     ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right) :
-            atype(atype), dtype(dtype), left(left), right(right), l(0) {}
+            atype(atype), dtype(dtype), left(left), right(right) {}
 
-    ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right, long l) :
-            atype(atype), dtype(dtype), left(left), right(right), l(l) {}
+    ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right, double num) :
+            atype(atype), dtype(dtype), left(left), right(right), number(num) {}
 
-    ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right, double d) :
-            atype(atype), dtype(dtype), left(left), right(right), d(d) {}
-
-    ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right, bool b) :
-            atype(atype), dtype(dtype), left(left), right(right), b(b) {}
-
-    ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right, String s) :
-            atype(atype), dtype(dtype), left(left), right(right), s(std::move(s)), l(0) {}
+    ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right, String str) :
+            atype(atype), dtype(dtype), left(left), right(right), text(std::move(str)) {}
 
     bool tableless() const {
         if (atype == A_COLUMN) {

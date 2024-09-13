@@ -86,13 +86,6 @@ namespace util {
         return trim(content);
     }
 
-    bool is_integer(const String &str) {
-        std::istringstream iss(str);
-        long value;
-        iss >> value;
-        return iss.eof() && !iss.fail();
-    }
-
     bool is_double(const String &str) {
         std::istringstream iss(str);
         double value;
@@ -104,17 +97,7 @@ namespace util {
         cout << "implement it later" << endl;
     }
 
-    int compare_integer(long a, long b) {
-        if (a < b) {
-            return -1;
-        } else if (a > b) {
-            return 1;
-        } else {
-            return 0;
-        }
-    }
-
-    int compare_double(double a, double b) {
+    int compare_number(double a, double b) {
         if (a < b) {
             return -1;
         } else if (a > b) {
