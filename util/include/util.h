@@ -39,6 +39,10 @@ namespace util {
     bool is_double(const String &str);
 
     void dump_ast(ASTNode *node, const String &indent);
+
+    int compare_integer(long a, long b);
+
+    int compare_double(double a, double b);
 }
 
 using namespace util;

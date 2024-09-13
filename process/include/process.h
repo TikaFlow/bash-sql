@@ -21,6 +21,8 @@ struct Cell {
     };
     String s;
 
+    explicit Cell() : type(D_NONE), l(0) {};
+
     explicit Cell(long l) : type(D_INT), l(l) {};
 
     explicit Cell(double d) : type(D_REAL), d(d) {};

@@ -882,6 +882,7 @@ static void validate_group_by(TableSet *from, Vector<SelectNode> *select, Vector
             if (column->atype == A_COLUMN) {
                 col->atype = column->atype;
                 col->dtype = column->dtype;
+                col->l = column->l;
                 col->s = column->s;
             } else {
                 show_error("Group by clause must be a column");

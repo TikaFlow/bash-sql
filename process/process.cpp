@@ -36,8 +36,152 @@ static Result *prepare_data(const String &data, int col_count, char d) {
     return res;
 }
 
+static void free_row(Row *row) {
+    if (!row) {
+        return;
+    }
+    for (val &cell: *row) {
+        delete cell;
+    }
+    delete row;
+}
+
+static void free_result(Result *result) {
+    if (!result) {
+        return;
+    }
+    for (val &row: *result) {
+        free_row(row);
+    }
+    delete result;
+}
+
+/**
+ * match type of two cells
+ * @param ltype left type
+ * @param rtype right type
+ * @return matched type
+ */
+static DataType match_type(DataType ltype, DataType rtype) {
+    if (ltype == D_REAL || rtype == D_REAL) {
+        return D_REAL;
+    }
+    return D_INT;
+}
+
+static void calc_math(Cell *cell, Cell *left, Cell *right, ASTType atype) {
+    if (atype == A_NEGATE) {
+        cell->type = left->type;
+    } else {
+        cell->type = match_type(left->type, right->type);
+    }
+}
+
+static void calc_logic(Cell *cell, Cell *left, Cell *right, ASTType atype) {
+    cell->type = D_BOOL;
+    var cmp = 0.0;
+    if (atype < A_AND) {
+        cmp = left->d - right->d; // to be improved
+    }
+    switch (atype) {
+        case A_EQ:
+            cell->b = cmp == 0;
+            break;
+        case A_NE:
+            cell->b = cmp != 0;
+            break;
+        case A_LT:
+            cell->b = cmp < 0;
+            break;
+        case A_GT:
+            cell->b = cmp > 0;
+            break;
+        case A_LE:
+            cell->b = cmp <= 0;
+            break;
+        case A_GE:
+            cell->b = cmp >= 0;
+            break;
+        case A_AND:
+            cell->b = left->b && right->b;
+            break;
+        case A_OR:
+            cell->b = left->b || right->b;
+            break;
+        case A_NOT:
+            cell->b = !left->b;
+            break;
+        case A_ISNULL:
+            if (left->type == D_STRING) {
+                cell->b = left->s.empty();
+            } else {
+                cell->b = left->s == "<null>";
+            }
+            break;
+        default:
+            break; // make compiler happy
+    }
+}
+
+static void calc_like(Cell *cell, Cell *left) {
+}
+
 static Cell *evaluate(Row *row, ASTNode *exp) {
-    return new Cell(true);
+    if (!exp) {
+        return null;
+    }
+    val left = evaluate(row, exp->left);
+    val right = evaluate(row, exp->right);
+
+    val cell = new Cell();
+    /*
+     * A_FUNC_CALL, A_PARAM, A_LITERAL, A_COLUMN,
+     * A_ADD, A_SUB, A_MUL, A_DIV, A_MOD,
+     * A_EQ, A_NE, A_LT, A_GT, A_LE, A_GE, A_AND, A_OR,
+     * A_NEGATE, A_NOT, A_ISNULL, A_LIKE, // unary operator
+     */
+    switch (exp->atype) { // never be A_JOIN
+        case A_FUNC_CALL:
+        case A_PARAM:
+            break; // to be implemented
+        case A_LITERAL:
+            cell->type = exp->dtype;
+            cell->d = exp->d; // l or b are also set
+            cell->s = exp->s;
+            break;
+        case A_COLUMN:
+            cell->type = row->at(exp->l)->type;
+            cell->d = row->at(exp->l)->d;
+            cell->s = row->at(exp->l)->s;
+            break;
+        case A_ADD:
+        case A_SUB:
+        case A_MUL:
+        case A_DIV:
+        case A_MOD:
+        case A_NEGATE:
+            calc_math(cell, left, right, exp->atype);
+            break;
+        case A_EQ:
+        case A_NE:
+        case A_LT:
+        case A_GT:
+        case A_LE:
+        case A_GE:
+        case A_AND:
+        case A_OR:
+        case A_NOT:
+        case A_ISNULL:
+            calc_logic(cell, left, right, exp->atype);
+            break;
+        case A_LIKE:
+            calc_like(cell, left);
+            break;
+        default:
+            break; // make compiler happy
+    }
+
+    return cell;
 }
 
 /**
@@ -99,6 +243,8 @@ static Result *apply_where(ASTNode *where, Result *from) {
     for (val &row: *from) {
         if (is_satisfy(row, where)) {
             res->emplace_back(row);
+        } else {
+            free_row(row);
         }
     }
 
@@ -111,12 +257,15 @@ static Result *apply_where(ASTNode *where, Result *from) {
  * @param where data of table format
  * @return the grouped data of table format
  */
-static Result *apply_group_by(Vector<ASTNode *> *group, Result *where) {
+static Map<String, Result *> *apply_group_by(Vector<ASTNode *> *group, Result *where) {
+    val groups = new Map<String, Result *>();
     if (!group) {
-        return where;
+        groups->insert({"group--1", where}); // -1 means no group
+        return groups;
     }
 
-    val groups = new Map<String, String>();
+    // <key, group_name>
+    val keys = new Map<String, String>();
     for (var &row: *where) {
         var key = String();
         for (auto &col: *group) {
@@ -140,22 +289,75 @@ static Result *apply_group_by(Vector<ASTNode *> *group, Result *where) {
             }
         }
 
-        groups->insert({key, "group-" + to_string(groups->size())});
-        row->emplace_back(new Cell(groups->at(key)));
+        val value = "group-" + to_string(groups->size());
+        keys->insert({key, value});
+        if (groups->count(value)) {
+            groups->at(value)->emplace_back(row);
+        } else {
+            val res = new Result();
+            res->emplace_back(row);
+            groups->insert({value, res});
+        }
     }
 
-    return where;
+    return groups;
 }
 
-static Result *apply_select(Vector<SelectNode> *select, Result *group_by, bool grouped) {
-    // in group_by, last cell at every Row is the group key
-    return group_by;
+static Result *apply_select(Vector<SelectNode> *select, Map<String, Result *> *group_by) {
+    if (group_by->size() == 1 && group_by->begin()->first == "group--1") {
+        return group_by->at("group--1");
+    }
+
+    return group_by->at("group-0");
 }
 
+/**
+ * apply ORDER BY clause
+ * @param order order clause
+ * @param select data of table format
+ * @return the ordered data of table format
+ */
 static Result *apply_order_by(Vector<OrderNode> *order, Result *select) {
     if (!order) {
         return select;
     }
+
+    sort(select->begin(), select->end(), [order](Row *a, Row *b) -> bool {
+        var res = false;
+
+        for (val &node: *order) {
+            int od;
+            val idx = node.index;
+            val type = a->at(idx)->type;
+
+            switch (type) {
+                case D_STRING:
+                    od = a->at(idx)->s.compare(b->at(idx)->s);
+                    break;
+                case D_INT:
+                    od = compare_integer(a->at(idx)->l, b->at(idx)->l);
+                    break;
+                case D_REAL:
+                    od = compare_double(a->at(idx)->d, b->at(idx)->d);
+                    break;
+                case D_BOOL:
+                    od = to_string(a->at(idx)->b).compare(to_string(b->at(idx)->b));
+                    break;
+                default:
+                    show_error("Internal error when sorting");
+            }
+
+            if (od == 0) {
+                continue;
+            }
+
+            res = od > 0;
+            return res ^ node.asc;
+        }
+
+        return false;
+    });
+
     return select;
 }
 
@@ -193,7 +395,7 @@ static Result *apply_stmt(SelectStatement *stmt, Map<String, Result *> *data) {
     val from = apply_from(stmt->from, data);
     val where = apply_where(stmt->where, from);
     val group_by = apply_group_by(stmt->group, where);
-    val select = apply_select(stmt->select, group_by, stmt->group);
+    val select = apply_select(stmt->select, group_by);
     val order_by = apply_order_by(stmt->order, select);
     val limit = apply_limit(stmt->limit, order_by);
     return limit;
@@ -479,6 +681,13 @@ Result *apply(SelectStatement *query, const String &data, int col_count, char d)
     val pre_data = prepare_data(data, col_count, d);
     val with_data = apply_with(query->with, pre_data);
     val res = apply_stmt(query, with_data);
+
+    // free with_data
+    // for (val &result: *with_data) {
+    //     free_result(result.second);
+    // }
+    // with_data->clear();
+    // delete with_data;
 
     return res;
 }

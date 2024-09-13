@@ -103,4 +103,24 @@ namespace util {
     void dump_ast(ASTNode *node, const String &indent = "") {
         cout << "implement it later" << endl;
     }
+
+    int compare_integer(long a, long b) {
+        if (a < b) {
+            return -1;
+        } else if (a > b) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
+    int compare_double(double a, double b) {
+        if (a < b) {
+            return -1;
+        } else if (a > b) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
 }

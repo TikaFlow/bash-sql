@@ -38,6 +38,7 @@ using std::stod;
 using std::to_string;
 using std::for_each;
 using std::all_of;
+using std::sort;
 using std::getline;
 using std::endl;
 using std::setw;
