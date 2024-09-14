@@ -19,9 +19,11 @@ struct Cell {
 
     Cell() : type(D_NONE) {};
 
+    Cell(const Cell &cell)  = default;
+
     explicit Cell(double num) : type(D_NUMBER), number(num) {};
 
-    explicit Cell(String str) : type(D_STRING), text(std::move(str)) {};
+    explicit Cell(const String& str) : type(D_STRING), text(str) {};
 };
 
 Result *apply(SelectStatement *query, const String &data, int col_count, char d);

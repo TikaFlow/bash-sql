@@ -77,8 +77,8 @@ struct ASTNode {
     ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right, double num) :
             atype(atype), dtype(dtype), left(left), right(right), number(num) {}
 
-    ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right, String str) :
-            atype(atype), dtype(dtype), left(left), right(right), text(std::move(str)) {}
+    ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right, const String &text) :
+            atype(atype), dtype(dtype), left(left), right(right), text(text) {}
 
     bool tableless() const {
         if (atype == A_COLUMN) {

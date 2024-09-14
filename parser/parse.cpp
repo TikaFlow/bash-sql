@@ -536,12 +536,20 @@ static void add_alias(const String &alias) {
  * release the memory of AST node
  * @param node the node to release
  */
-static inline void release_node(ASTNode **node) {
-    if (*node) {
-        val temp = *node;
-        *node = null;
-        delete temp;
+static inline void release_node(ASTNode *&node) {
+    if (!node) {
+        return;
     }
+
+    if (node->left) {
+        release_node(node->left);
+    }
+    if (node->right) {
+        release_node(node->right);
+    }
+
+    delete node;
+    node = null;
 }
 
 /**
@@ -628,8 +636,8 @@ static void constant_fold(ASTNode *node) {
             break; // make compiler happy
     }
 
-    release_node(&node->left);
-    release_node(&node->right);
+    release_node(node->left);
+    release_node(node->right);
     node->atype = A_LITERAL; // now node itself is a literal
 }
 
@@ -649,8 +657,6 @@ static void circuit_and(ASTNode *node) {
             node->atype = A_LITERAL;
             node->number = false;
         }
-        release_node(&node->left);
-        release_node(&node->right);
     } else if (node->right->atype == A_LITERAL) {
         if ((bool) node->right->number) {
             node->atype = node->left->atype;
@@ -662,8 +668,6 @@ static void circuit_and(ASTNode *node) {
             node->atype = A_LITERAL;
             node->number = false;
         }
-        release_node(&node->left);
-        release_node(&node->right);
     }
 }
 
@@ -683,8 +687,6 @@ static void circuit_or(ASTNode *node) {
             node->number = node->right->number;
             node->text = node->right->text;
         }
-        release_node(&node->left);
-        release_node(&node->right);
     } else if (node->right->atype == A_LITERAL) {
         if ((bool) node->right->number) {
             node->atype = A_LITERAL;
@@ -696,8 +698,6 @@ static void circuit_or(ASTNode *node) {
             node->number = node->left->number;
             node->text = node->left->text;
         }
-        release_node(&node->left);
-        release_node(&node->right);
     }
 }
 
@@ -710,12 +710,23 @@ static void short_circuit(ASTNode *node) {
         return;
     }
 
+    /*
+     * literal-literal: processed in constant_fold
+     * !literal-!literal: return
+     * !literal-literal: go on
+     * literal-!literal: go on
+     */
+    if (node->left->atype != A_LITERAL && node->right->atype != A_LITERAL) {
+        return;
+    }
+
     if (node->atype == A_AND) {
         circuit_and(node);
-    }
-    if (node->atype == A_OR) {
+    } else {
         circuit_or(node);
     }
+    release_node(node->left);
+    release_node(node->right);
 }
 
 /**
@@ -889,7 +900,7 @@ static Vector<SelectNode> *parse_select() {
         String as;
         if (peek()->type == T_STAR) {
             pop();
-            val col = new ASTNode(A_COLUMN, D_NONE, null, null, String("*"));
+            val col = new ASTNode(A_COLUMN, D_NONE, null, null, "*");
             // select *
             select->push_back({col, as});
             continue;
@@ -1005,7 +1016,7 @@ static Pair<ASTNode *, TableSet *> from_std() {
 
     TABLES_USED.insert({"std", "std"});
     val true_node = new ASTNode(A_LITERAL, D_BOOL, null, null, true);
-    val node = new ASTNode(A_JOIN, D_NONE, null, true_node, String("std"));
+    val node = new ASTNode(A_JOIN, D_NONE, null, true_node, "std");
     return {node, from};
 }
 

@@ -27,7 +27,11 @@ static Result *prepare_data(const String &data, int col_count, char d) {
         cols->resize(col_count);
 
         for (val &col: *cols) {
-            row->emplace_back(new Cell(trim(col)));
+            if (is_double(col)) {
+                row->emplace_back(new Cell(stod(col)));
+            } else {
+                row->emplace_back(new Cell(col));
+            }
         }
 
         res->emplace_back(row);
@@ -36,24 +40,69 @@ static Result *prepare_data(const String &data, int col_count, char d) {
     return res;
 }
 
-static void free_row(Row *row) {
+/**
+ * make new row from two rows
+ * @param left left row
+ * @param right right row
+ * @return new row
+ */
+static Row *make_row(Row *left, Row *right) {
+    val new_row = new Row();
+
+    if (left) {
+        for (val &cell: *left) {
+            val new_cell = new Cell(*cell);
+            new_row->emplace_back(new_cell);
+        }
+    }
+
+    if (right) {
+        for (val &cell: *right) {
+            val new_cell = new Cell(*cell);
+            new_row->emplace_back(new_cell);
+        }
+        return new_row;
+    }
+
+    return new_row;
+}
+
+/**
+ * free memory of row
+ * @param row the row
+ */
+static void free_row(Row *&row) {
     if (!row) {
         return;
     }
-    for (val &cell: *row) {
+
+    for (var &cell: *row) {
+        if (!cell) {
+            continue;
+        }
         delete cell;
+        cell = null;
     }
+
     delete row;
+    row = null;
 }
 
+/**
+ * free memory of result
+ * @param result the result
+ */
 static void free_result(Result *result) {
     if (!result) {
         return;
     }
-    for (val &row: *result) {
+
+    for (var &row: *result) {
         free_row(row);
     }
+
     delete result;
+    result = null;
 }
 
 /**
@@ -300,23 +349,22 @@ static bool is_satisfy(Row *row, ASTNode *where) {
  * @return data of table format
  */
 static Result *apply_from(ASTNode *from, Map<String, Result *> *data) {
-    if (!from->left) {
-        return data->at(from->text);
+    val res = new Result();
+    if (!from) {
+        res->emplace_back(null);
+        return res;
     }
 
-    val res = new Result();
     val left = apply_from(from->left, data);
     val right = data->at(from->text);
 
     for (val &row1: *left) {
         for (val &row2: *right) {
-            val new_row = new Row();
-            new_row->insert(new_row->end(), row1->begin(), row1->end());
-            new_row->insert(new_row->end(), row2->begin(), row2->end());
+            var new_row = make_row(row1, row2);
             if (is_satisfy(new_row, from->right)) {
                 res->emplace_back(new_row);
             } else {
-                delete new_row;
+                free_row(new_row);
             }
         }
     }
@@ -336,7 +384,7 @@ static Result *apply_where(ASTNode *where, Result *from) {
     }
 
     val res = new Result();
-    for (val &row: *from) {
+    for (var &row: *from) {
         if (is_satisfy(row, where)) {
             res->emplace_back(row);
         } else {
@@ -415,6 +463,8 @@ static Result *apply_select(Vector<SelectNode> *select, Map<String, Result *> *g
             }
             res->emplace_back(new_row);
         }
+
+        free_result(group);
     }
 
     return res;
@@ -477,9 +527,11 @@ static Result *apply_limit(LimitNode *limit, Result *order_by) {
     }
 
     if (limit->offset < order_by->size()) {
+        for_each(order_by->begin(), order_by->begin() + limit->offset, free_row);
         order_by->assign(order_by->begin() + limit->offset, order_by->end());
 
         if (limit->count < order_by->size()) {
+            for_each(order_by->begin() + limit->count, order_by->end(), free_row);
             order_by->resize(limit->count);
         }
     } else {
