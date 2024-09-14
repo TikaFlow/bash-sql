@@ -108,19 +108,21 @@ static void stmt_start() {
 /**
  * cast a string literal node to a number node
  * @param node node to be cast
+ * @return true if cast successfully
  */
-static void cast_string(ASTNode *node) {
-    if (node->atype != A_LITERAL) {
-        return;
+static bool cast_string(ASTNode *node) {
+    val &str = node->text;
+    if (is_integer(str)) {
+        node->number = stoi(str);
+        node->dtype = D_INTEGER;
+    } else if (is_double(str)) {
+        node->number = stod(str);
+        node->dtype = D_REAL;
+    } else {
+        return false;
     }
 
-    val &str = node->text;
-    if (is_double(str)) {
-        node->number = stod(str);
-        node->dtype = D_NUMBER;
-    } else {
-        show_error("cannot convert string to number: " + str);
-    }
+    return true;
 }
 
 /**
@@ -139,21 +141,21 @@ static DataType repair_type(ASTNode *left, ASTNode *right, ASTType op_type) {
         }
     }
 
-    DataType left_type = left->dtype, right_type = right ? right->dtype : D_NONE;
+    var l_nan = false, r_nan = false;
+    // if one of them is string literal, then we try to convert it to integer/real
+    if (left->atype == A_LITERAL && left->dtype == D_STRING) {
+        l_nan = !cast_string(left);
+    }
+    if (right && right->atype == A_LITERAL && right->dtype == D_STRING) {
+        r_nan = !cast_string(left);
+    }
+    val left_type = left->dtype, right_type = right ? right->dtype : D_NONE;
 
     if (op_type == A_NEGATE || (op_type >= A_ADD && op_type <= A_MOD)) { // mathematical operator
-        // if one of them is string literal, then we try to convert it to integer/real
-        if (left_type == D_STRING) {
-            cast_string(left);
-        }
-        if (right_type == D_STRING) {
-            cast_string(right);
-        }
-
-        // get type again because they may have been changed
-        left_type = left->dtype, right_type = right ? right->dtype : D_NONE;
-
         if (op_type == A_NEGATE) {
+            if (l_nan) {
+                show_error("cannot convert string to number: " + left->text);
+            }
             if (left_type == D_BOOL) {
                 show_error("incompatible operands of negate");
             }
@@ -161,8 +163,22 @@ static DataType repair_type(ASTNode *left, ASTNode *right, ASTType op_type) {
             return left_type;
         }
 
+        if (l_nan || r_nan) {
+            show_error("cannot convert string to number: " + (l_nan ? left->text : right->text));
+        }
+
         if (left_type == D_BOOL || right_type == D_BOOL) {
             show_error("incompatible operands");
+        }
+
+        // if there is a determined D_REAL, then we get D_REAL
+        if (left_type == D_REAL || right_type == D_REAL) {
+            return D_REAL;
+        }
+
+        // if both are D_INT, then we get D_INT
+        if (left_type == D_INTEGER && right_type == D_INTEGER) {
+            return D_INTEGER;
         }
 
         return D_NUMBER;
@@ -176,12 +192,12 @@ static DataType repair_type(ASTNode *left, ASTNode *right, ASTType op_type) {
             show_error("incompatible operands");
         }
         return D_BOOL;
-    } else if (op_type >= A_NOT && op_type <= A_ISNULL) { // unary logic operator
+    } else if (op_type == A_NOT) { // unary logic operator
         if (left_type == D_BOOL) {
             return D_BOOL;
         }
         show_error("incompatible operands");
-    } else { // "like"
+    } else { // "is_null"|"like"
         return D_BOOL;
     }
 
@@ -209,8 +225,8 @@ static Pair<String, String> *resolve_column(const String &str) {
  * @return ast node of the function call
  */
 static ASTNode *function_call(const String &name) {
-    ASTNode *node, *left = null, *param;
-    String func = to_lower(name);
+    ASTNode *left = null, *param;
+    val func = to_lower(name);
     if (!FUNCS.count(func)) {
         show_error("Unknown function '" + func + "'");
     }
@@ -223,9 +239,7 @@ static ASTNode *function_call(const String &name) {
         } while (pop()->type == T_COMMA);
     }
     match(T_RPAREN, "close parenthesis");
-    node = new ASTNode(A_FUNC_CALL, FUNCS.at(func), left, null);
-
-    return node;
+    return new ASTNode(A_FUNC_CALL, FUNCS.at(func), left, null, func);
 }
 
 /**
@@ -240,10 +254,14 @@ static ASTNode *primary() {
     var tk = pop();
     switch (tk->type) {
         case T_INTEGER:
-            node = new ASTNode(A_LITERAL, D_NUMBER, null, null, tk->integer);
+            node = new ASTNode(A_LITERAL, D_INTEGER, null, null, tk->integer);
             break;
         case T_REAL:
-            node = new ASTNode(A_LITERAL, D_NUMBER, null, null, tk->real);
+            node = new ASTNode(A_LITERAL, D_REAL, null, null, tk->real);
+            break;
+        case T_TRUE:
+        case T_FALSE:
+            node = new ASTNode(A_LITERAL, D_BOOL, null, null, tk->type == T_TRUE);
             break;
         case T_STRING:
             node = new ASTNode(A_LITERAL, D_STRING, null, null, tk->text);
@@ -557,26 +575,17 @@ static inline void release_node(ASTNode *&node) {
  * @param node the node to fold
  */
 static void constant_fold(ASTNode *node) {
-    if (node->atype < A_ADD || node->atype > A_ISNULL) {
-        return;
-    }
-
-    if (node->left->atype != A_LITERAL) {
+    if (node->atype < A_ADD || node->atype > A_ISNULL || node->left->atype != A_LITERAL) {
         return;
     }
 
     if (node->atype <= A_OR && node->right->atype != A_LITERAL) {
         return;
     }
+    // till now, left and right(if there has) are both literal
 
-    // till now, left and right(if there has) are both literal, and string literal has been converted
-    if (node->left->dtype == D_STRING) {
-        return;
-    }
-    if (node->right && node->right->dtype == D_STRING) {
-        return;
-    }
-
+    var left = node->left, right = node->right;
+    val cmp = compare_number(left->number, right ? right->number : 0);
     switch (node->atype) { // never be A_LIKE
         /*
          * A_ADD, A_SUB, A_MUL, A_DIV, A_MOD,
@@ -584,60 +593,73 @@ static void constant_fold(ASTNode *node) {
          * A_NEGATE, A_NOT, A_ISNULL,
          */
         case A_ADD:
-            node->number = node->left->number + node->right->number;
+            node->number = left->number + right->number;
             break;
         case A_SUB:
-            node->number = node->left->number - node->right->number;
+            node->number = left->number - right->number;
             break;
         case A_MUL:
-            node->number = node->left->number * node->right->number;
+            node->number = left->number * right->number;
             break;
         case A_DIV:
-            node->number = node->left->number / node->right->number;
+            node->number = left->number / right->number;
             break;
         case A_MOD:
-            node->number = fmod(node->left->number, node->right->number);
+            node->number = fmod(left->number, right->number);
             break;
         case A_EQ:
-            node->number = node->left->number == node->right->number;
+            if (left->dtype != D_STRING) {
+                left->text = to_string(left->number);
+            }
+            if (right->dtype != D_STRING) {
+                right->text = to_string(right->number);
+            }
+            // just compare their text
+            node->number = left->text == right->text;
             break;
         case A_NE:
-            node->number = node->left->number != node->right->number;
+            if (left->dtype != D_STRING) {
+                left->text = to_string(left->number);
+            }
+            if (right->dtype != D_STRING) {
+                right->text = to_string(right->number);
+            }
+            node->number = left->text != right->text;
             break;
         case A_LT:
-            node->number = node->left->number < node->right->number;
+            node->number = cmp < 0;
             break;
         case A_GT:
-            node->number = node->left->number > node->right->number;
+            node->number = cmp > 0;
             break;
         case A_LE:
-            node->number = node->left->number <= node->right->number;
+            node->number = cmp <= 0;
             break;
         case A_GE:
-            node->number = node->left->number >= node->right->number;
+            node->number = cmp >= 0;
             break;
         case A_AND:
-            node->number = (bool) node->left->number && (bool) node->right->number;
+            node->number = (bool) left->number && (bool) right->number;
             break;
         case A_OR:
-            node->number = (bool) node->left->number || (bool) node->right->number;
+            node->number = (bool) left->number || (bool) right->number;
             break;
         case A_NEGATE:
-            node->number = -node->left->number;
+            node->number = -left->number;
             break;
         case A_NOT:
-            node->number = node->left->number == 0;
+            node->number = left->number == 0;
             break;
         case A_ISNULL:
-            // only string literal can be null
-            node->number = node->left->dtype == D_STRING && node->left->text.empty();
+            // if a literal, only string can be null
+            node->number = left->dtype == D_STRING && left->text.empty();
             break;
         default:
             break; // make compiler happy
     }
 
-    release_node(node->left);
-    release_node(node->right);
+    release_node(left);
+    release_node(right);
     node->atype = A_LITERAL; // now node itself is a literal
 }
 
@@ -841,7 +863,7 @@ static void validate_group_by(TableSet *from, Vector<SelectNode> *select, Vector
     for (val &col: *group) {
         if (col->atype == A_COLUMN) {
             check_ast(from, col);
-        } else if (col->atype == A_LITERAL && col->dtype == D_NUMBER
+        } else if (col->atype == A_LITERAL && col->dtype == D_INTEGER
                    && col->number > 0 && (int) col->number < select->size()) {
             val column = select->at((int) col->number - 1).col;
             if (column->atype == A_COLUMN) {

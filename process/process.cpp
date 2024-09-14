@@ -27,8 +27,12 @@ static Result *prepare_data(const String &data, int col_count, char d) {
         cols->resize(col_count);
 
         for (val &col: *cols) {
-            if (is_double(col)) {
-                row->emplace_back(new Cell(stod(col)));
+            if (is_integer(col)) {
+                row->emplace_back(new Cell(D_INTEGER, stoi(col)));
+            } else if (is_double(col)) {
+                row->emplace_back(new Cell(D_REAL, stod(col)));
+            } else if (col == "true" || col == "false") {
+                row->emplace_back(new Cell(D_BOOL, col == "true"));
             } else {
                 row->emplace_back(new Cell(col));
             }
@@ -106,25 +110,41 @@ static void free_result(Result *result) {
 }
 
 /**
- * repair to number type of cell
+ * repair to target type of cell
  * @param cell the cell
+ * @param target target type
+ * @return the type of result
  */
-static void repair_cell(Cell *cell) {
+static DataType repair_cell(Cell *cell, DataType target) {
     if (!cell) {
-        return;
+        return D_NONE;
     }
 
-    if (cell->type == D_BOOL) {
-        show_error("require numbers, but got bool");
-    }
-
-    if (cell->type == D_STRING) {
-        if (is_double(cell->text)) {
-            cell->type = D_NUMBER;
-            cell->number = stod(cell->text);
-        } else {
-            show_error("require numbers, but got string");
-        }
+    switch (target) {
+        case D_INTEGER:
+        case D_REAL:
+            if (cell->type == D_BOOL) {
+                show_error("incompatible type for arithmetic operation");
+            } else if (cell->type == D_STRING) {
+                if (is_integer(cell->text)) {
+                    cell->type = D_INTEGER;
+                    cell->number = stoi(cell->text);
+                } else if (is_double(cell->text)) {
+                    cell->type = D_REAL;
+                    cell->number = stod(cell->text);
+                } else {
+                    show_error("cannot convert string to number");
+                }
+            } else {
+                return cell->type;
+            }
+        case D_STRING:
+            if (cell->type > D_STRING) {
+                cell->text = to_string(cell->number);
+            }
+            return D_STRING;
+        default:
+            return D_NONE; // make compiler happy
     }
 }
 
@@ -132,13 +152,43 @@ static void repair_cell(Cell *cell) {
  * repair type of two cells
  * @param left left cell
  * @param right right cell
- * @return matched type
+ * @param op operate type
+ * @return the type of result
  */
-static DataType repair_type(Cell *left, Cell *right) {
-    repair_cell(left);
-    repair_cell(right);
+static DataType repair_type(Cell *left, Cell *right, ASTType op) {
+    val type = (op == A_EQ || op == A_NE) ? D_STRING : D_INTEGER;
+    val ltype = repair_cell(left, type);
+    val rtype = repair_cell(right, type);
 
-    return D_NUMBER;
+    if (op == A_EQ || op == A_NE) {
+        return D_BOOL;
+    }
+
+    if (op == A_NEGATE) {
+        return ltype;
+    }
+
+    if (ltype == D_REAL || rtype == D_REAL) {
+        return D_REAL;
+    }
+
+    return D_INTEGER;
+}
+
+/**
+ * evaluate function call
+ * @note the function node is like:
+ *                  func_call(name)
+ *                  /       \
+ *              param_node  null
+ *              /       \
+ *  prev_param_node   param_exp
+ * @param row data to be evaluated
+ * @param func_node function node
+ * @return result cell
+ */
+static Cell *calc_func_call(Row *row, ASTNode *func_node) {
+    return null;
 }
 
 /**
@@ -149,7 +199,7 @@ static DataType repair_type(Cell *left, Cell *right) {
  * @param atype expression type
  */
 static void calc_math(Cell *cell, Cell *left, Cell *right, ASTType atype) {
-    cell->type = repair_type(left, right);
+    cell->type = repair_type(left, right, atype);
 
     switch (atype) {
         case A_ADD:
@@ -167,6 +217,9 @@ static void calc_math(Cell *cell, Cell *left, Cell *right, ASTType atype) {
         case A_MOD:
             cell->number = fmod(left->number, right->number);
             break;
+        case A_NEGATE:
+            cell->number = -left->number;
+            break;
         default:
             break; // make compiler happy
     }
@@ -181,37 +234,27 @@ static void calc_math(Cell *cell, Cell *left, Cell *right, ASTType atype) {
  */
 static void calc_logic(Cell *cell, Cell *left, Cell *right, ASTType atype) {
     cell->type = D_BOOL;
+    val cmp = compare_number(left->number, right ? right->number : 0);
     switch (atype) {
         case A_EQ:
+            repair_type(left, right, atype);
+            cell->number = left->text == right->text;
+            break;
         case A_NE:
-            if (left->type == D_STRING && right->type == D_STRING) {
-                if (atype == A_EQ) {
-                    cell->number = left->text == right->text;
-                } else {
-                    cell->number = left->text != right->text;
-                }
-                break;
-            } else if (left->type == D_STRING || right->type == D_STRING) {
-                repair_type(left, right);
-            }
-
-            if (atype == A_EQ) {
-                cell->number = left->number == right->number;
-            } else {
-                cell->number = left->number != right->number;
-            }
+            repair_type(left, right, atype);
+            cell->number = left->text != right->text;
             break;
         case A_LT:
-            cell->number = left->number < right->number;
+            cell->number = cmp < 0;
             break;
         case A_GT:
-            cell->number = left->number > right->number;
+            cell->number = cmp > 0;
             break;
         case A_LE:
-            cell->number = left->number <= right->number;
+            cell->number = cmp <= 0;
             break;
         case A_GE:
-            cell->number = left->number >= right->number;
+            cell->number = cmp >= 0;
             break;
         case A_AND:
             cell->number = (bool) left->number && (bool) right->number;
@@ -226,7 +269,7 @@ static void calc_logic(Cell *cell, Cell *left, Cell *right, ASTType atype) {
             if (left->type == D_STRING) {
                 cell->number = left->text.empty();
             } else {
-                cell->number = left->text == "<null>";
+                cell->number = left->text == NONE;
             }
             break;
         default:
@@ -275,20 +318,22 @@ static Cell *evaluate(Row *row, ASTNode *exp) {
     if (!exp) {
         return null;
     }
+
+    if (exp->atype == A_FUNC_CALL) { // A_PARAM is in the subtree
+        return calc_func_call(row, exp);
+    }
+
     val left = evaluate(row, exp->left);
     val right = evaluate(row, exp->right);
 
     val cell = new Cell();
     switch (exp->atype) { // never be A_JOIN
         /*
-         * A_FUNC_CALL, A_PARAM, A_LITERAL, A_COLUMN,
+         * A_LITERAL, A_COLUMN,
          * A_ADD, A_SUB, A_MUL, A_DIV, A_MOD,
          * A_EQ, A_NE, A_LT, A_GT, A_LE, A_GE, A_AND, A_OR,
          * A_NEGATE, A_NOT, A_ISNULL, A_LIKE,
          */
-        case A_FUNC_CALL:
-        case A_PARAM:
-            break; // to be implemented
         case A_LITERAL:
             cell->type = exp->dtype;
             cell->number = exp->number;
@@ -415,16 +460,10 @@ static Map<String, Result *> *apply_group_by(Vector<ASTNode *> *group, Result *w
         for (auto &col: *group) {
             key += "├";
             val cell = row->at((int) col->number);
-            switch (col->dtype) {
-                case D_STRING:
-                    key += cell->text;
-                    break;
-                case D_NUMBER:
-                case D_BOOL:
-                    key += to_string(cell->number);
-                    break;
-                default:
-                    show_error("Cannot recognize data type of column: " + cell->text);
+            if (col->dtype == D_STRING) {
+                key += cell->text;
+            } else {
+                key += to_string(cell->number);
             }
         }
 
@@ -489,16 +528,10 @@ static Result *apply_order_by(Vector<OrderNode> *order, Result *select) {
             val idx = node.index;
             val type = a->at(idx)->type;
 
-            switch (type) {
-                case D_STRING:
-                    od = a->at(idx)->text.compare(b->at(idx)->text);
-                    break;
-                case D_NUMBER:
-                case D_BOOL:
-                    od = compare_number(a->at(idx)->number, b->at(idx)->number);
-                    break;
-                default:
-                    show_error("Internal error when sorting");
+            if (type == D_STRING || a->at(idx)->text == NONE) {
+                od = a->at(idx)->text.compare(b->at(idx)->text);
+            } else {
+                od = compare_number(a->at(idx)->number, b->at(idx)->number);
             }
 
             if (od == 0) {

@@ -5,6 +5,7 @@
 #ifndef BASH_SQL_PROCESS_H
 #define BASH_SQL_PROCESS_H
 
+#include <cmath>
 #include "getopt_util.h"
 #include "defs.h"
 
@@ -19,11 +20,25 @@ struct Cell {
 
     Cell() : type(D_NONE) {};
 
-    Cell(const Cell &cell)  = default;
+    Cell(const Cell &cell) = default;
 
-    explicit Cell(double num) : type(D_NUMBER), number(num) {};
+    Cell(DataType type, double num) : type(type), number(num) {};
 
-    explicit Cell(const String& str) : type(D_STRING), text(str) {};
+    explicit Cell(const String &str) : type(D_STRING), text(str) {};
+
+    String to_string() const {
+        switch (type) {
+            case D_BOOL:
+                return number == 0 ? "false" : "true";
+            case D_INTEGER:
+            case D_REAL:
+                return cut_tail(::to_string(number));
+            case D_STRING:
+                return text;
+            default:
+                return ""; // make compiler happy
+        }
+    }
 };
 
 Result *apply(SelectStatement *query, const String &data, int col_count, char d);

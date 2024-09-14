@@ -86,6 +86,13 @@ namespace util {
         return trim(content);
     }
 
+    bool is_integer(const String &str) {
+        std::istringstream iss(str);
+        long value;
+        iss >> value;
+        return iss.eof() && !iss.fail();
+    }
+
     bool is_double(const String &str) {
         std::istringstream iss(str);
         double value;
@@ -105,5 +112,19 @@ namespace util {
         } else {
             return 0;
         }
+    }
+
+    String cut_tail(const String &str) {
+        val pos = str.find_last_not_of('0');
+
+        if (pos == npos) {
+            return str;
+        }
+
+        if (str[pos] == '.') {
+            return str.substr(0, pos);
+        }
+
+        return str.substr(0, pos + 1);
     }
 }

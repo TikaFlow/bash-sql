@@ -11,6 +11,9 @@
 #include <regex>
 #include <iomanip>
 
+// constants
+#define NONE "<null>"
+
 // version and copyright
 #define VERSION "1.0.1"
 #define AUTHOR "Tika Flow"

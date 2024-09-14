@@ -19,6 +19,8 @@ static void init_map() {
     KEYWORD.insert({"join", T_JOIN});
     KEYWORD.insert({"on", T_ON});
     KEYWORD.insert({"where", T_WHERE});
+    KEYWORD.insert({"true", T_TRUE});
+    KEYWORD.insert({"false", T_FALSE});
     KEYWORD.insert({"group", T_GROUP});
     KEYWORD.insert({"by", T_BY});
     KEYWORD.insert({"order", T_ORDER});
@@ -177,7 +179,7 @@ static String escape_string(String &str) {
  * @param token the token to be checked
  */
 static void check_keyword(Token *token) {
-    String text = to_lower(token->text);
+    val text = to_lower(token->text);
     if (KEYWORD.count(text)) {
         token->type = KEYWORD.at(text);
         token->text = text; // prevent mixed case
@@ -242,7 +244,7 @@ static void scan_number(Token *token) {
     if (dot) {
         token->real = stod(str);
     } else {
-        token->integer = stol(str);
+        token->integer = stoi(str);
     }
 }
 

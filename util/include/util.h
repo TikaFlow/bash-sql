@@ -34,11 +34,15 @@ namespace util {
 
     String read_file_to_string(const String &filename);
 
+    bool is_integer(const String &str);
+
     bool is_double(const String &str);
 
     void dump_ast(ASTNode *node, const String &indent);
 
     int compare_number(double a, double b);
+
+    String cut_tail(const String &str);
 }
 
 using namespace util;

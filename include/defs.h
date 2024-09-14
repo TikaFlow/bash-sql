@@ -5,8 +5,6 @@
 #ifndef BASH_SQL_DEFS_H
 #define BASH_SQL_DEFS_H
 
-#include <cmath>
-
 /**
  * select statement
  * @note writing order: with -> select -> from -> where -> group -> order -> limit
@@ -28,14 +26,15 @@ typedef enum {
     T_EQ, T_NE1, T_NE2, T_LT, T_GT, T_LE, T_GE,
     T_LPAREN, T_RPAREN, T_COMMA, T_SEMICOLON,
     T_INTEGER, T_REAL, T_STRING, T_IDENTIFIER,
-    T_SELECT, T_AS, T_FROM, T_JOIN, T_ON, T_WHERE,
+    T_SELECT, T_AS, T_FROM, T_JOIN, T_ON, T_WHERE, T_TRUE, T_FALSE,
     T_GROUP, T_BY, T_ORDER, T_ASC, T_DESC, T_IN, T_OFFSET, T_LIMIT,
     T_AND, T_OR, T_NOT, T_LIKE, T_IS, T_NULL, T_WITH,
 } TokenType;
 
 typedef enum {
     D_NONE, // no type, or to be determined
-    D_STRING, D_BOOL, D_NUMBER,
+    D_STRING, D_BOOL, D_INTEGER, D_REAL,
+    D_NUMBER,
 } DataType;
 
 typedef enum {
