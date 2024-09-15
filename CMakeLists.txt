@@ -19,6 +19,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # subdirectories
 add_subdirectory(util)
+add_subdirectory(function)
 add_subdirectory(parser)
 add_subdirectory(process)
 

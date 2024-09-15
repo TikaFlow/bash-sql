@@ -4,17 +4,50 @@
 
 #include "parse.h"
 
+bool ASTNode::tableless() const {
+    if (atype == A_COLUMN) {
+        return false;
+    }
+
+    if (left) {
+        if (!left->tableless()) {
+            return false;
+        }
+    }
+
+    if (right) {
+        if (!right->tableless()) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool SelectStatement::tableless_with() const {
+    if (!with) {
+        return true;
+    }
+
+    return all_of(with->begin(), with->end(), [](WithNode &node) { return node.stmt->tableless(); });
+}
+
+bool SelectStatement::tableless_select() const {
+    if (!select) {
+        return true;
+    }
+
+    return all_of(select->begin(), select->end(), [](SelectNode &node) { return node.col->tableless(); });
+}
+
+bool SelectStatement::tableless() const {
+    return tableless_with() && tableless_select();
+}
+
 // next token index to be process
 static int INDEX = 0;
 // token vector from lexer
 static const Vector<Token *> *TOKENS;
-// build-in functions, <name, type>
-static const Map<String, DataType> FUNCS = {
-        {"sub_str", D_STRING},
-        {"lower",   D_STRING},
-        {"upper",   D_STRING},
-        {"trim",    D_STRING},
-};
 // maintain 3 lists for every select
 // selected alias: <aliases, index>
 static Map<String, int> ALIAS;
@@ -227,7 +260,7 @@ static Pair<String, String> *resolve_column(const String &str) {
 static ASTNode *function_call(const String &name) {
     ASTNode *left = null, *param;
     val func = to_lower(name);
-    if (!FUNCS.count(func)) {
+    if (!FUNCTIONS.count(func)) {
         show_error("Unknown function '" + func + "'");
     }
 
@@ -237,9 +270,10 @@ static ASTNode *function_call(const String &name) {
             param = expression();
             left = new ASTNode(A_PARAM, D_NONE, left, param);
         } while (pop()->type == T_COMMA);
+        unpop();
     }
     match(T_RPAREN, "close parenthesis");
-    return new ASTNode(A_FUNC_CALL, FUNCS.at(func), left, null, func);
+    return new ASTNode(A_FUNC_CALL, FUNCTIONS.at(func).first, left, null, func);
 }
 
 /**

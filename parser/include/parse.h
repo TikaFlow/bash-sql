@@ -7,7 +7,7 @@
 
 #include <cmath>
 #include "util.h"
-#include "defs.h"
+#include "funcs.h"
 
 Vector<SelectStatement *> *parse(Vector<Token *> *tokens, int col_count);
 

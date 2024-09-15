@@ -27,6 +27,8 @@
 using String = std::string;
 template<typename T>
 using Vector = std::vector<T>;
+template<typename T>
+using Stack = std::stack<T>;
 template<typename K, typename V>
 using Map = std::map<K, V>;
 template<typename T1, typename T2>

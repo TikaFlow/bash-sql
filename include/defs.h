@@ -19,6 +19,7 @@ typedef struct Token Token;
 typedef struct Param Param;
 typedef struct Column Column;
 typedef struct ASTNode ASTNode;
+typedef struct Cell Cell;
 
 typedef enum {
     T_EOF,
@@ -44,12 +45,6 @@ typedef enum {
     A_EQ, A_NE, A_LT, A_GT, A_LE, A_GE, A_AND, A_OR,
     A_NEGATE, A_NOT, A_ISNULL, A_LIKE, // unary operator
 } ASTType;
-
-// column type, column index in the table(0-indexed), -1 if ambiguous
-using ColumnDesc = Pair<DataType, int>;
-// column name, columns type
-using Table = Vector<Pair<String, DataType>>;
-using TableSet = Map<String, ColumnDesc>;
 
 struct Token {
     TokenType type;
@@ -79,25 +74,23 @@ struct ASTNode {
     ASTNode(ASTType atype, DataType dtype, ASTNode *left, ASTNode *right, const String &text) :
             atype(atype), dtype(dtype), left(left), right(right), text(text) {}
 
-    bool tableless() const {
-        if (atype == A_COLUMN) {
-            return false;
-        }
+    bool tableless() const;
+};
 
-        if (left) {
-            if (!left->tableless()) {
-                return false;
-            }
-        }
+struct Cell {
+    DataType type;
+    double number = 0;
+    String text;
 
-        if (right) {
-            if (!right->tableless()) {
-                return false;
-            }
-        }
+    Cell() : type(D_NONE) {};
 
-        return true;
-    }
+    Cell(const Cell &cell) = default;
+
+    Cell(DataType type, double num) : type(type), number(num) {};
+
+    explicit Cell(const String &str) : type(D_STRING), text(str) {};
+
+    String to_string() const;
 };
 
 struct WithNode {
@@ -136,25 +129,19 @@ struct SelectStatement {
     Vector<OrderNode> *order;
     LimitNode *limit;
 
-    bool tableless_with() const {
-        if (!with) {
-            return true;
-        }
+    bool tableless_with() const;
 
-        return all_of(with->begin(), with->end(), [](WithNode &node) { return node.stmt->tableless(); });
-    }
+    bool tableless_select() const;
 
-    bool tableless_select() const {
-        if (!select) {
-            return true;
-        }
-
-        return all_of(select->begin(), select->end(), [](SelectNode &node) { return node.col->tableless(); });
-    }
-
-    bool tableless() const {
-        return tableless_with() && tableless_select();
-    }
+    bool tableless() const;
 };
+
+using Row = Vector<Cell *>;
+using Result = Vector<Row *>;
+// column type, column index in the table(0-indexed), -1 if ambiguous
+using ColumnDesc = Pair<DataType, int>;
+// column name, columns type
+using Table = Vector<Pair<String, DataType>>;
+using TableSet = Map<String, ColumnDesc>;
 
 #endif //BASH_SQL_DEFS_H

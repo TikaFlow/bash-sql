@@ -4,6 +4,22 @@
 
 #include "process.h"
 
+String Cell::to_string() const {
+    switch (type) {
+        case D_BOOL:
+            return number == 0 ? "false" : "true";
+        case D_INTEGER:
+        case D_REAL:
+            return cut_tail(::to_string(number));
+        case D_STRING:
+            return text;
+        default:
+            return ""; // make compiler happy
+    }
+}
+
+static Cell *evaluate(Row *row, ASTNode *exp);
+
 /**
  * prepare data from string
  * @param data data string
@@ -188,7 +204,21 @@ static DataType repair_type(Cell *left, Cell *right, ASTType op) {
  * @return result cell
  */
 static Cell *calc_func_call(Row *row, ASTNode *func_node) {
-    return null;
+    val params = new Row();
+    val stc = new Stack<Cell *>();
+
+    var param_node = func_node->left;
+    while (param_node) {
+        stc->push(evaluate(row, param_node->right));
+        param_node = param_node->left;
+    }
+    while (!stc->empty()) {
+        params->emplace_back(stc->top());
+        stc->pop();
+    }
+
+    val func = FUNCTIONS.at(func_node->text).second;
+    return func(params);
 }
 
 /**
