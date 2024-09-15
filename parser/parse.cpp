@@ -273,7 +273,7 @@ static ASTNode *function_call(const String &name) {
         unpop();
     }
     match(T_RPAREN, "close parenthesis");
-    return new ASTNode(A_FUNC_CALL, FUNCTIONS.at(func).first, left, null, func);
+    return new ASTNode(A_FUNC_CALL, FUNCTIONS.at(func).dtype, left, null, func);
 }
 
 /**
@@ -834,6 +834,63 @@ static void check_ast(TableSet *from, ASTNode *node) {
 }
 
 /**
+ * check if has aggregate functions
+ * @param node the ast root node
+ * @return true if has
+ */
+static bool has_aggregate(ASTNode *node) {
+    if (!node) {
+        return false;
+    }
+
+    if (node->atype != A_FUNC_CALL) {
+        return has_aggregate(node->left) || has_aggregate(node->right);
+    }
+
+    // if a func_call node
+    val ftype = FUNCTIONS.at(node->text).ftype;
+    if (ftype == F_AGGREGATE) {
+        return true;
+    }
+
+    var param = node->left;
+    while (param) {
+        if (has_aggregate(param->right)) {
+            return true;
+        }
+        param = param->left;
+    }
+    return false;
+}
+
+/**
+ * check if has nested aggregate functions
+ * @param node the ast root node
+ * @return true if has
+ */
+static bool has_nested_aggregate(ASTNode *node) {
+    if (!node) {
+        return false;
+    }
+
+    if (node->atype != A_FUNC_CALL) {
+        return has_nested_aggregate(node->left) || has_nested_aggregate(node->right);
+    }
+
+    // if a func_call node
+    var param = node->left;
+    val ftype = FUNCTIONS.at(node->text).ftype;
+    while (param) {
+        if ((ftype != F_AGGREGATE && has_nested_aggregate(param->right))
+            || (ftype == F_AGGREGATE && has_aggregate(param->right))) {
+            return true;
+        }
+        param = param->left;
+    }
+    return false;
+}
+
+/**
  * check if the select columns are valid
  * @param from FROM table
  * @param select SELECT clause
@@ -846,6 +903,11 @@ static void validate_select(TableSet *from, Vector<SelectNode> *select) {
         if (col->atype == A_COLUMN && resolve_column(col->text)->second == "*") {
             val count = expand_star(select, i, resolve_column(col->text)->first);
             i += count - 1;
+        } else {
+            // check if there are nested aggregate functions
+            if (has_nested_aggregate(col)) {
+                show_error("Nested aggregate functions are not allowed");
+            }
         }
     }
 
@@ -878,7 +940,13 @@ static void validate_where(TableSet *from, ASTNode *where) {
     if (!where) {
         return;
     }
+
+    if (has_aggregate(where)) {
+        show_error("Aggregate functions are not allowed in condition expression");
+    }
+
     check_ast(from, where);
+
     if (where->dtype != D_BOOL) {
         show_error("WHERE clause must a boolean expression");
     }
@@ -894,13 +962,16 @@ static void validate_group_by(TableSet *from, Vector<SelectNode> *select, Vector
     if (!group) {
         return;
     }
+
+    var columns = Map<double, int>();
+
     for (val &col: *group) {
         if (col->atype == A_COLUMN) {
             check_ast(from, col);
         } else if (col->atype == A_LITERAL && col->dtype == D_INTEGER
                    && col->number > 0 && (int) col->number < select->size()) {
             val column = select->at((int) col->number - 1).col;
-            if (column->atype == A_COLUMN) {
+            if (column->atype == A_COLUMN || column->atype == A_LITERAL) {
                 col->atype = column->atype;
                 col->dtype = column->dtype;
                 col->number = column->number;
@@ -911,6 +982,27 @@ static void validate_group_by(TableSet *from, Vector<SelectNode> *select, Vector
         } else {
             show_error("Group by clause must be a column or a position in select clause");
         }
+
+        if (col->atype == A_COLUMN) {
+            columns.insert({col->number, 1});
+        }
+    }
+
+    // check if select columns are in group by
+    for (val &snode: *select) {
+        val &col = snode.col;
+        if (col->atype != A_LITERAL && !has_aggregate(col)) {
+            if (col->atype != A_COLUMN
+                || all_of(group->begin(), group->end(), [&](ASTNode *node) { return node->number != col->number; })) {
+                show_error("Column in select clause must be in group by clause");
+            }
+
+            columns.erase(col->number);
+        }
+    }
+
+    if (!columns.empty()) {
+        show_error("Column in group by clause must be in select clause");
     }
 }
 

@@ -217,7 +217,7 @@ static Cell *calc_func_call(Row *row, ASTNode *func_node) {
         stc->pop();
     }
 
-    val func = FUNCTIONS.at(func_node->text).second;
+    val func = FUNCTIONS.at(func_node->text).pointer;
     return func(params);
 }
 

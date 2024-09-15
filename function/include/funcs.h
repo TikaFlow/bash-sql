@@ -8,7 +8,20 @@
 #include "global.h"
 #include "defs.h"
 
-extern Map<String, Pair<DataType, Cell *(*)(Row *)>> FUNCTIONS;
+typedef struct Function Function;
+
+typedef enum {
+    F_AGGREGATE, F_NORMAL,
+} FuncType;
+
+struct Function {
+    DataType dtype;
+    FuncType ftype;
+
+    Cell *(*pointer)(Row *);
+};
+
+extern Map<String, Function> FUNCTIONS;
 
 void init_funcs();
 
