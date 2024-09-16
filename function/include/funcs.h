@@ -7,6 +7,16 @@
 
 #include "global.h"
 #include "defs.h"
+#include "util.h"
+
+#define ADD_FUNC(name, dtype, ftype) \
+FUNCTIONS[#name] = {dtype, ftype, name}
+
+#define ADD_NORMAL(name, dtype) \
+ADD_FUNC(name, dtype, F_NORMAL)
+
+#define ADD_AGG(name, dtype) \
+ADD_FUNC(name, dtype, F_AGGREGATE)
 
 typedef struct Function Function;
 
@@ -22,6 +32,20 @@ struct Function {
 };
 
 extern Map<String, Function> FUNCTIONS;
+
+void init_math_funcs();
+
+void init_string_funcs();
+
+void init_date_funcs();
+
+void init_logical_funcs();
+
+void init_cast_funcs();
+
+void init_agg_funcs();
+
+void init_misc_funcs();
 
 void init_funcs();
 

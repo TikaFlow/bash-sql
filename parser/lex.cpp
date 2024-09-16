@@ -42,7 +42,6 @@ static void init_map() {
     DESC.insert({T_MINUS, "-"});
     DESC.insert({T_STAR, "*"});
     DESC.insert({T_SLASH, "/"});
-    DESC.insert({T_MOD, "%"});
     DESC.insert({T_EQ, "="});
     DESC.insert({T_NE1, "<>"});
     DESC.insert({T_NE2, "!="});
@@ -296,9 +295,6 @@ static Token *scan() {
             break;
         case '/':
             token->type = T_SLASH;
-            break;
-        case '%':
-            token->type = T_MOD;
             break;
         case '=':
             token->type = T_EQ;

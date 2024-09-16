@@ -211,7 +211,7 @@ static Cell *calc_func_call(Result *data, ASTNode *func_node) {
     var param_node = func_node->left;
     if (func.ftype == F_AGGREGATE) {
         if (!param_node) {
-            show_error("aggregate function does not support empty parameters");
+            show_error("Too less parameters for function: " + func_node->text);
         }
 
         val new_data = new Result();
@@ -224,7 +224,7 @@ static Cell *calc_func_call(Result *data, ASTNode *func_node) {
         }
 
         if (param_node->left) {
-            show_error("aggregate function does not support multiple parameters");
+            show_error("Too many parameters for function: " + func_node->text);
         }
     } else {
         while (param_node) {
@@ -262,9 +262,6 @@ static void calc_math(Cell *cell, Cell *left, Cell *right, ASTType atype) {
             break;
         case A_DIV:
             cell->number = left->number / right->number;
-            break;
-        case A_MOD:
-            cell->number = fmod(left->number, right->number);
             break;
         case A_NEGATE:
             cell->number = -left->number;
@@ -398,7 +395,6 @@ static Cell *evaluate(Result *data, ASTNode *exp) {
         case A_SUB:
         case A_MUL:
         case A_DIV:
-        case A_MOD:
         case A_NEGATE:
             calc_math(cell, left, right, exp->atype);
             break;

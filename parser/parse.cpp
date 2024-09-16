@@ -184,7 +184,7 @@ static DataType repair_type(ASTNode *left, ASTNode *right, ASTType op_type) {
     }
     val left_type = left->dtype, right_type = right ? right->dtype : D_NONE;
 
-    if (op_type == A_NEGATE || (op_type >= A_ADD && op_type <= A_MOD)) { // mathematical operator
+    if (op_type == A_NEGATE || (op_type >= A_ADD && op_type <= A_DIV)) { // mathematical operator
         if (op_type == A_NEGATE) {
             if (l_nan) {
                 show_error("cannot convert string to number: " + left->text);
@@ -349,11 +349,10 @@ static ASTNode *term() {
     var left = factor();
     var tk = peek();
 
-    while (tk->type == T_STAR || tk->type == T_SLASH || tk->type == T_MOD) {
+    while (tk->type == T_STAR || tk->type == T_SLASH) {
         pop();
         val right = factor();
-        val atype = tk->type == T_STAR ? A_MUL :
-                    (tk->type == T_SLASH ? A_DIV : A_MOD);
+        val atype = tk->type == T_STAR ? A_MUL : A_DIV;
         left = new ASTNode(atype, D_NUMBER, left, right);
         tk = peek();
     }
@@ -622,7 +621,7 @@ static void constant_fold(ASTNode *node) {
     val cmp = compare_number(left->number, right ? right->number : 0);
     switch (node->atype) { // never be A_LIKE
         /*
-         * A_ADD, A_SUB, A_MUL, A_DIV, A_MOD,
+         * A_ADD, A_SUB, A_MUL, A_DIV,
          * A_EQ, A_NE, A_LT, A_GT, A_LE, A_GE, A_AND, A_OR,
          * A_NEGATE, A_NOT, A_ISNULL,
          */
@@ -637,9 +636,6 @@ static void constant_fold(ASTNode *node) {
             break;
         case A_DIV:
             node->number = left->number / right->number;
-            break;
-        case A_MOD:
-            node->number = fmod(left->number, right->number);
             break;
         case A_EQ:
             if (left->dtype != D_STRING) {

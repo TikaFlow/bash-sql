@@ -4,33 +4,23 @@
 
 #include "funcs.h"
 
-#define ADD_FUNC(name, dtype, ftype) \
-FUNCTIONS[#name] = {dtype, ftype, name}
-
 Map<String, Function> FUNCTIONS;
 
-static Cell *concat(Row *row) {
-    var str = String();
+// make compiler happy...
+void init_date_funcs() {}
 
-    for (val &cell: *row) {
-        str += cell->to_string();
-    }
+void init_logical_funcs() {}
 
-    return new Cell(str);
-}
+void init_cast_funcs() {}
 
-static Cell *sum(Row *row) {
-    val res = new Cell();
-    res->type = row->at(0)->type;
-
-    for (val &cell: *row) {
-        res->number += cell->number;
-    }
-
-    return res;
-}
+void init_misc_funcs() {}
 
 void init_funcs() {
-    ADD_FUNC(concat, D_STRING, F_NORMAL);
-    ADD_FUNC(sum, D_NUMBER, F_AGGREGATE);
+    init_math_funcs();
+    init_string_funcs();
+    init_date_funcs();
+    init_logical_funcs();
+    init_cast_funcs();
+    init_agg_funcs();
+    init_misc_funcs();
 }

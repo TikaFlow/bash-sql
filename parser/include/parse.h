@@ -5,7 +5,6 @@
 #ifndef BASH_SQL_PARSE_H
 #define BASH_SQL_PARSE_H
 
-#include <cmath>
 #include "util.h"
 #include "funcs.h"
 

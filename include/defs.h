@@ -23,7 +23,7 @@ typedef struct Cell Cell;
 
 typedef enum {
     T_EOF,
-    T_PLUS, T_MINUS, T_STAR, T_SLASH, T_MOD,
+    T_PLUS, T_MINUS, T_STAR, T_SLASH,
     T_EQ, T_NE1, T_NE2, T_LT, T_GT, T_LE, T_GE,
     T_LPAREN, T_RPAREN, T_COMMA, T_SEMICOLON,
     T_INTEGER, T_REAL, T_STRING, T_IDENTIFIER,
@@ -41,7 +41,7 @@ typedef enum {
 typedef enum {
     A_JOIN,
     A_FUNC_CALL, A_PARAM, A_LITERAL, A_COLUMN,
-    A_ADD, A_SUB, A_MUL, A_DIV, A_MOD,
+    A_ADD, A_SUB, A_MUL, A_DIV,
     A_EQ, A_NE, A_LT, A_GT, A_LE, A_GE, A_AND, A_OR,
     A_NEGATE, A_NOT, A_ISNULL, A_LIKE, // unary operator
 } ASTType;
