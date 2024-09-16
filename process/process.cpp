@@ -18,7 +18,7 @@ String Cell::to_string() const {
     }
 }
 
-static Cell *evaluate(Row *row, ASTNode *exp);
+static Cell *evaluate(Result *data, ASTNode *exp);
 
 /**
  * prepare data from string
@@ -140,7 +140,7 @@ static DataType repair_cell(Cell *cell, DataType target) {
         case D_INTEGER:
         case D_REAL:
             if (cell->type == D_BOOL) {
-                show_error("incompatible type for arithmetic operation");
+                show_error("bool type is not incompatible for arithmetic operation");
             } else if (cell->type == D_STRING) {
                 if (is_integer(cell->text)) {
                     cell->type = D_INTEGER;
@@ -149,7 +149,7 @@ static DataType repair_cell(Cell *cell, DataType target) {
                     cell->type = D_REAL;
                     cell->number = stod(cell->text);
                 } else {
-                    show_error("cannot convert string to number");
+                    show_error("cannot convert string to number: " + cell->text);
                 }
             } else {
                 return cell->type;
@@ -199,26 +199,45 @@ static DataType repair_type(Cell *left, Cell *right, ASTType op) {
  *              param_node  null
  *              /       \
  *  prev_param_node   param_exp
- * @param row data to be evaluated
+ * @param data data to be evaluated
  * @param func_node function node
  * @return result cell
  */
-static Cell *calc_func_call(Row *row, ASTNode *func_node) {
+static Cell *calc_func_call(Result *data, ASTNode *func_node) {
     val params = new Row();
     val stc = new Stack<Cell *>();
 
+    val func = FUNCTIONS.at(func_node->text);
     var param_node = func_node->left;
-    while (param_node) {
-        stc->push(evaluate(row, param_node->right));
-        param_node = param_node->left;
-    }
-    while (!stc->empty()) {
-        params->emplace_back(stc->top());
-        stc->pop();
+    if (func.ftype == F_AGGREGATE) {
+        if (!param_node) {
+            show_error("aggregate function does not support empty parameters");
+        }
+
+        val new_data = new Result();
+        new_data->emplace_back(new Row());
+        for (var row: *data) {
+            new_data->erase(new_data->begin());
+            new_data->emplace_back(row);
+
+            params->emplace_back(evaluate(new_data, param_node->right));
+        }
+
+        if (param_node->left) {
+            show_error("aggregate function does not support multiple parameters");
+        }
+    } else {
+        while (param_node) {
+            stc->push(evaluate(data, param_node->right));
+            param_node = param_node->left;
+        }
+        while (!stc->empty()) {
+            params->emplace_back(stc->top());
+            stc->pop();
+        }
     }
 
-    val func = FUNCTIONS.at(func_node->text).pointer;
-    return func(params);
+    return func.pointer(params);
 }
 
 /**
@@ -339,24 +358,25 @@ static void calc_like(Cell *cell, Cell *data, Cell *like) {
 
 /**
  * evaluate expression
- * @param row data to be evaluated
+ * @param data data to be evaluated
  * @param exp expression
  * @return result cell
  * @todd some nodes are not implemented
  */
-static Cell *evaluate(Row *row, ASTNode *exp) {
+static Cell *evaluate(Result *data, ASTNode *exp) {
     if (!exp) {
         return null;
     }
 
     if (exp->atype == A_FUNC_CALL) { // A_PARAM is in the subtree
-        return calc_func_call(row, exp);
+        return calc_func_call(data, exp);
     }
 
-    val left = evaluate(row, exp->left);
-    val right = evaluate(row, exp->right);
+    val left = evaluate(data, exp->left);
+    val right = evaluate(data, exp->right);
 
     val cell = new Cell();
+    val row = data->at(0);
     switch (exp->atype) { // never be A_JOIN
         /*
          * A_LITERAL, A_COLUMN,
@@ -411,7 +431,10 @@ static Cell *evaluate(Row *row, ASTNode *exp) {
  * @return true if the data satisfies the condition, false otherwise
  */
 static bool is_satisfy(Row *row, ASTNode *where) {
-    val cell = evaluate(row, where);
+    val data = new Result();
+    data->emplace_back(row);
+
+    val cell = evaluate(data, where);
     val value = cell->number > 0;
     delete cell;
     return value;
@@ -505,10 +528,10 @@ static Map<String, Result *> *apply_group_by(Vector<ASTNode *> *group, Result *w
                 }
 
                 val value = "group-" + to_string(groups->size());
-                keys->insert({key, value});
-                if (groups->count(value)) {
-                    groups->at(value)->emplace_back(row);
+                if (keys->count(key)) {
+                    groups->at(keys->at(key))->emplace_back(row);
                 } else {
+                    keys->insert({key, value});
                     val res = new Result();
                     res->emplace_back(row);
                     groups->insert({value, res});
@@ -531,15 +554,13 @@ static Result *apply_select(Vector<SelectNode> *select, Map<String, Result *> *g
 
     for (val &kv: *group_by) {
         val group = kv.second;
-        // todo: evaluate a group
-        for (val &row: *group) {
-            val new_row = new Row();
-            for (val &node: *select) {
-                val new_cell = evaluate(row, node.col);
-                new_row->emplace_back(new_cell);
-            }
-            res->emplace_back(new_row);
+
+        val new_row = new Row();
+        for (val &node: *select) {
+            val new_cell = evaluate(group, node.col);
+            new_row->emplace_back(new_cell);
         }
+        res->emplace_back(new_row);
 
         free_result(group);
     }

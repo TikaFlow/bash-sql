@@ -111,7 +111,7 @@ static Token *match(TokenType type, const String &what) {
     if (token && token->type == type) {
         return token;
     } else {
-        show_error("Expected " + what + " but got '" + (token ? token->text : "nothing") + "'");
+        show_error("Expected " + what + " but got " + (token ? token->text : "nothing"));
     }
     return null; // make compiler happy
 }
@@ -122,7 +122,7 @@ static Token *match(TokenType type, const String &what) {
 static void init_std() {
     val std = new Table();
 
-    for (int i = 0; i < COL_NUM; ++i) {
+    for (var i = 0; i < COL_NUM; ++i) {
         std->push_back({"col" + std::to_string(i + 1), D_STRING});
     }
 
@@ -217,19 +217,19 @@ static DataType repair_type(ASTNode *left, ASTNode *right, ASTType op_type) {
         return D_NUMBER;
     } else if (op_type >= A_EQ && op_type <= A_GE) { // binary logic operator
         if (left_type == D_BOOL || right_type == D_BOOL) {
-            show_error("incompatible operands");
+            show_error("incompatible operands for '==' or '!='");
         }
         return D_BOOL;
     } else if (op_type >= A_AND && op_type <= A_OR) { // and/or operator
         if (left_type != D_BOOL || right_type != D_BOOL) {
-            show_error("incompatible operands");
+            show_error("incompatible operands for 'AND' or 'OR'");
         }
         return D_BOOL;
     } else if (op_type == A_NOT) { // unary logic operator
         if (left_type == D_BOOL) {
             return D_BOOL;
         }
-        show_error("incompatible operands");
+        show_error("incompatible operands for 'NOT'");
     } else { // "is_null"|"like"
         return D_BOOL;
     }
@@ -261,7 +261,7 @@ static ASTNode *function_call(const String &name) {
     ASTNode *left = null, *param;
     val func = to_lower(name);
     if (!FUNCTIONS.count(func)) {
-        show_error("Unknown function '" + func + "'");
+        show_error("Unknown function: '" + func + "'");
     }
 
     pop(); // pop "("
@@ -896,17 +896,21 @@ static bool has_nested_aggregate(ASTNode *node) {
  * @param group the group by clause
  * @return true if has
  */
-static bool outside_agg(ASTNode *node, Vector<ASTNode *> *&group) {
+static bool outside_agg(ASTNode *node, Vector<ASTNode *> *&group, ASTNode *&who) {
     if (!node) {
         return false;
     }
 
     if (node->atype == A_COLUMN) {
-        return none_of(group->begin(), group->end(), [&](ASTNode *gnode) { return gnode->number == node->number; });
+        val res = none_of(group->begin(), group->end(), [&](ASTNode *gnode) { return gnode->number == node->number; });
+        if (res) {
+            who = node;
+            return true;
+        }
     }
 
     if (node->atype != A_FUNC_CALL) {
-        return outside_agg(node->left, group) || outside_agg(node->right, group);
+        return outside_agg(node->left, group, who) || outside_agg(node->right, group, who);
     }
 
     // if a func_call node
@@ -917,7 +921,7 @@ static bool outside_agg(ASTNode *node, Vector<ASTNode *> *&group) {
 
     var param = node->left;
     while (param) {
-        if (outside_agg(param->right, group)) {
+        if (outside_agg(param->right, group, who)) {
             return true;
         }
         param = param->left;
@@ -933,7 +937,7 @@ static bool outside_agg(ASTNode *node, Vector<ASTNode *> *&group) {
  */
 static void validate_select(TableSet *from, Vector<SelectNode> *select) {
     // assert(select != null); // select would never be null
-    for (int i = 0; i < select->size(); i++) {
+    for (var i = 0; i < select->size(); i++) {
         val &col = select->at(i).col;
 
         if (col->atype == A_COLUMN && resolve_column(col->text)->second == "*") {
@@ -1010,7 +1014,7 @@ static void validate_group_by(TableSet *from, Vector<SelectNode> *select, Vector
         return;
     }
 
-    var columns = Map<double, int>();
+    var columns = Map<double, String>();
 
     for (val &col: *group) {
         if (col->atype == A_COLUMN) {
@@ -1024,14 +1028,14 @@ static void validate_group_by(TableSet *from, Vector<SelectNode> *select, Vector
                 col->number = column->number;
                 col->text = column->text;
             } else {
-                show_error("Group by clause must be a column");
+                show_error("Group index must refer tp a column or literal: " + to_string(col->number));
             }
         } else {
             show_error("Group by clause must be a column or a position in select clause");
         }
 
         if (col->atype == A_COLUMN) {
-            columns.insert({col->number, 1});
+            columns.insert({col->number, col->text});
         }
     }
 
@@ -1044,23 +1048,29 @@ static void validate_group_by(TableSet *from, Vector<SelectNode> *select, Vector
 
         val has_agg = has_aggregate(col);
         if (has_agg) {
-            if (outside_agg(col, group)) {
-                show_error("Column without aggregate function must be in group by clause");
+            var who = col;
+            if (outside_agg(col, group, who)) {
+                show_error("Column outside aggregate function must be in group by clause: " + who->text);
             }
         } else {
             if (col->atype != A_COLUMN
                 || none_of(group->begin(), group->end(), [&](ASTNode *gnode) {
                 return gnode->number == col->number;
             })) {
-                show_error("Column without aggregate function must be in group by clause");
+                show_error("Column without aggregate function must be in group by clause: " + col->text);
             }
-        }
 
-        columns.erase(col->number);
+            columns.erase(col->number);
+        }
     }
 
     if (!columns.empty()) {
-        show_error("Column in group by clause must be in select clause");
+        var cols = columns.begin()->second;
+        columns.erase(columns.begin());
+        for_each(columns.begin(), columns.end(), [&](const Pair<double, String> &col) {
+            cols += ", " + col.second;
+        });
+        show_error("Column in group by clause must be in select clause: " + cols);
     }
 }
 
@@ -1074,7 +1084,7 @@ static void validate_order_by(Vector<OrderNode> *order) {
     }
     for (val &col: *order) {
         if (col.index < 0) {
-            show_error("Column index must be greater than 0");
+            show_error("Column index in order by must be greater than 0");
         }
     }
 }

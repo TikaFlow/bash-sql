@@ -128,7 +128,7 @@ ProgramOptions parse_cmd_options(int argc, char *argv[]) {
     }
 
     // query string
-    for (int i = optind; i < argc; ++i) {
+    for (var i = optind; i < argc; ++i) {
         options.query += argv[i];
         if (i < argc - 1) {
             options.query += " ";
