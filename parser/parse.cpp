@@ -891,6 +891,42 @@ static bool has_nested_aggregate(ASTNode *node) {
 }
 
 /**
+ * check if there is column outside of aggregate function but not in group by
+ * @param node the ast root node
+ * @param group the group by clause
+ * @return true if has
+ */
+static bool outside_agg(ASTNode *node, Vector<ASTNode *> *&group) {
+    if (!node) {
+        return false;
+    }
+
+    if (node->atype == A_COLUMN) {
+        return none_of(group->begin(), group->end(), [&](ASTNode *gnode) { return gnode->number == node->number; });
+    }
+
+    if (node->atype != A_FUNC_CALL) {
+        return outside_agg(node->left, group) || outside_agg(node->right, group);
+    }
+
+    // if a func_call node
+    val ftype = FUNCTIONS.at(node->text).ftype;
+    if (ftype == F_AGGREGATE) {
+        return false;
+    }
+
+    var param = node->left;
+    while (param) {
+        if (outside_agg(param->right, group)) {
+            return true;
+        }
+        param = param->left;
+    }
+
+    return false;
+}
+
+/**
  * check if the select columns are valid
  * @param from FROM table
  * @param select SELECT clause
@@ -958,8 +994,19 @@ static void validate_where(TableSet *from, ASTNode *where) {
  * @param select SELECT clause
  * @param group GROUP BY clause
  */
-static void validate_group_by(TableSet *from, Vector<SelectNode> *select, Vector<ASTNode *> *group) {
+static void validate_group_by(TableSet *from, Vector<SelectNode> *select, Vector<ASTNode *> *&group) {
     if (!group) {
+        if (all_of(select->begin(), select->end(), [](const SelectNode &node) {
+            return node.col->atype == A_LITERAL || has_aggregate(node.col);
+        })) {
+            // special case: we should have a group even if there is no GROUP BY clause
+            group = new Vector<ASTNode *>();
+            group->emplace_back(new ASTNode(A_COLUMN, D_NONE, null, null, -1));
+        } else if (!none_of(select->begin(), select->end(), [](const SelectNode &node) {
+            return has_aggregate(node.col);
+        })) {
+            show_error("Column without aggregate function must be in group by clause");
+        }
         return;
     }
 
@@ -988,17 +1035,28 @@ static void validate_group_by(TableSet *from, Vector<SelectNode> *select, Vector
         }
     }
 
-    // check if select columns are in group by
-    for (val &snode: *select) {
-        val &col = snode.col;
-        if (col->atype != A_LITERAL && !has_aggregate(col)) {
-            if (col->atype != A_COLUMN
-                || all_of(group->begin(), group->end(), [&](ASTNode *node) { return node->number != col->number; })) {
-                show_error("Column in select clause must be in group by clause");
-            }
-
-            columns.erase(col->number);
+    // check if select columns are valid
+    for (val &node: *select) {
+        val &col = node.col;
+        if (col->atype == A_LITERAL) { // literal is always valid
+            continue;
         }
+
+        val has_agg = has_aggregate(col);
+        if (has_agg) {
+            if (outside_agg(col, group)) {
+                show_error("Column without aggregate function must be in group by clause");
+            }
+        } else {
+            if (col->atype != A_COLUMN
+                || none_of(group->begin(), group->end(), [&](ASTNode *gnode) {
+                return gnode->number == col->number;
+            })) {
+                show_error("Column without aggregate function must be in group by clause");
+            }
+        }
+
+        columns.erase(col->number);
     }
 
     if (!columns.empty()) {

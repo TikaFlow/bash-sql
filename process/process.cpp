@@ -478,33 +478,42 @@ static Result *apply_where(ASTNode *where, Result *from) {
  */
 static Map<String, Result *> *apply_group_by(Vector<ASTNode *> *group, Result *where) {
     val groups = new Map<String, Result *>();
-    if (!group) {
-        groups->insert({"group--1", where}); // -1 means no group
-        return groups;
-    }
-
     // <key, group_name>
     val keys = new Map<String, String>();
-    for (var &row: *where) {
-        var key = String();
-        for (auto &col: *group) {
-            key += "├";
-            val cell = row->at((int) col->number);
-            if (col->dtype == D_STRING) {
-                key += cell->text;
-            } else {
-                key += to_string(cell->number);
-            }
-        }
-
-        val value = "group-" + to_string(groups->size());
-        keys->insert({key, value});
-        if (groups->count(value)) {
-            groups->at(value)->emplace_back(row);
-        } else {
+    if (!group) {
+        // no group by clause means every row is a unique group
+        for (val &row: *where) {
             val res = new Result();
             res->emplace_back(row);
-            groups->insert({value, res});
+            groups->insert({"group-" + to_string(groups->size()), res});
+        }
+    } else {
+        val g0 = group->at(0);
+        if (group->size() == 1 && g0->atype == A_COLUMN && g0->dtype == D_NONE && g0->number == -1) {
+            groups->insert({"group--1", where}); // special group
+        } else {
+            for (var &row: *where) {
+                var key = String();
+                for (auto &col: *group) {
+                    key += "㉿";
+                    val cell = row->at((int) col->number);
+                    if (col->dtype == D_STRING) {
+                        key += cell->text;
+                    } else {
+                        key += to_string(cell->number);
+                    }
+                }
+
+                val value = "group-" + to_string(groups->size());
+                keys->insert({key, value});
+                if (groups->count(value)) {
+                    groups->at(value)->emplace_back(row);
+                } else {
+                    val res = new Result();
+                    res->emplace_back(row);
+                    groups->insert({value, res});
+                }
+            }
         }
     }
 
@@ -520,10 +529,9 @@ static Map<String, Result *> *apply_group_by(Vector<ASTNode *> *group, Result *w
 static Result *apply_select(Vector<SelectNode> *select, Map<String, Result *> *group_by) {
     val res = new Result();
 
-    Result *group;
-    if (group_by->size() == 1 && group_by->begin()->first == "group--1") {
-        group = group_by->at("group--1");
-
+    for (val &kv: *group_by) {
+        val group = kv.second;
+        // todo: evaluate a group
         for (val &row: *group) {
             val new_row = new Row();
             for (val &node: *select) {
