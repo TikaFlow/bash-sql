@@ -4,10 +4,14 @@
 
 #include "funcs.h"
 
-static Cell *concat(Row *row) {
+static Cell *tk_concat(Row *row) {
     var str = String();
 
     for (val &cell: *row) {
+        if ((cell->type == D_STRING && cell->text.empty())
+            || (cell->type != D_STRING && cell->text == NONE)) {
+            return new Cell(D_STRING);
+        }
         str += cell->to_string();
     }
 

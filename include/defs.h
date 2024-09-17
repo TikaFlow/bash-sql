@@ -88,6 +88,8 @@ struct Cell {
 
     Cell(DataType type, double num) : type(type), number(num) {};
 
+    explicit Cell(DataType type) : type(type), text(NONE) {};
+
     explicit Cell(const String &str) : type(D_STRING), text(str) {};
 
     String to_string() const;

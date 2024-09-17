@@ -4,9 +4,13 @@
 
 #include "funcs.h"
 
-static Cell *sum(Row *row) {
+#define ADD_AGG(name, dtype) \
+ADD_FUNC(name, dtype, F_AGGREGATE)
+
+static Cell *tk_sum(Row *row) {
     val res = new Cell();
     res->type = D_INTEGER;
+    var nums = 0;
 
     for (val &cell: *row) {
         if (cell->type != D_INTEGER && cell->type != D_REAL) {
@@ -23,6 +27,11 @@ static Cell *sum(Row *row) {
         }
 
         res->number += cell->number;
+        nums++;
+    }
+
+    if (!nums) {
+        res->text = NONE;
     }
 
     return res;

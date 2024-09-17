@@ -791,6 +791,53 @@ static void optimize_ast(ASTNode *node) {
 }
 
 /**
+ * check if has aggregate functions
+ * @param node the ast root node
+ * @return true if has
+ */
+static bool has_aggregate(ASTNode *node) {
+    if (!node) {
+        return false;
+    }
+
+    if (node->atype != A_FUNC_CALL) {
+        return has_aggregate(node->left) || has_aggregate(node->right);
+    }
+
+    // if a func_call node
+    val ftype = FUNCTIONS.at(node->text).ftype;
+    if (ftype == F_AGGREGATE) {
+        return true;
+    }
+
+    var param = node->left;
+    while (param) {
+        if (has_aggregate(param->right)) {
+            return true;
+        }
+        param = param->left;
+    }
+    return false;
+}
+
+/**
+ * check if has random functions
+ * @param node the ast root node
+ * @return true if has
+ */
+static bool has_random(ASTNode *node) {
+    if (!node) {
+        return false;
+    }
+
+    if (node->atype == A_FUNC_CALL && node->text == "rand") {
+        return true;
+    }
+
+    return has_random(node->left) || has_random(node->right);
+}
+
+/**
  * check if the column is valid
  * and repair types if needed
  * @param from FROM table
@@ -799,6 +846,10 @@ static void optimize_ast(ASTNode *node) {
 static void check_ast(TableSet *from, ASTNode *node) {
     if (!node) {
         return;
+    }
+
+    if (has_aggregate(node) && has_random(node)) {
+        show_error("Aggregate functions cannot use with random functions");
     }
 
     if (node->left) {
@@ -827,36 +878,6 @@ static void check_ast(TableSet *from, ASTNode *node) {
 
     // optimize the ast
     optimize_ast(node);
-}
-
-/**
- * check if has aggregate functions
- * @param node the ast root node
- * @return true if has
- */
-static bool has_aggregate(ASTNode *node) {
-    if (!node) {
-        return false;
-    }
-
-    if (node->atype != A_FUNC_CALL) {
-        return has_aggregate(node->left) || has_aggregate(node->right);
-    }
-
-    // if a func_call node
-    val ftype = FUNCTIONS.at(node->text).ftype;
-    if (ftype == F_AGGREGATE) {
-        return true;
-    }
-
-    var param = node->left;
-    while (param) {
-        if (has_aggregate(param->right)) {
-            return true;
-        }
-        param = param->left;
-    }
-    return false;
 }
 
 /**
@@ -977,8 +998,8 @@ static void validate_where(TableSet *from, ASTNode *where) {
         return;
     }
 
-    if (has_aggregate(where)) {
-        show_error("Aggregate functions are not allowed in condition expression");
+    if (has_aggregate(where) || has_random(where)) {
+        show_error("Aggregate or random functions are not allowed in condition expression");
     }
 
     check_ast(from, where);
