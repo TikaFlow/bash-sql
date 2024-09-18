@@ -42,56 +42,58 @@ ps -aux | sql -tlc11 "select *, col1 as user, col2 as pid, col9 as start, col11 
 
 # 支持的函数
 
-> ☄️ 待实现
+> 🔴 待实现
+> 
+> 🟡 部分实现
 >
-> ✔️ 已实现
+> 🟢 已实现
 
-## 类型转换/type conversion
+## 类型转换/type conversion 🔴
 
-## 流程控制/flow control
+## 流程控制/flow control 🔴
 
-## 数学/math
+## 数学/math 🟢
 
-### abs(`x`) ☄️
+### abs(`x`) 🟢
 
 Returns the absolute value of `X`, or NULL if `X` is NULL.
 
-### acos(`x`) ☄️
+### acos(`x`) 🟢
 
 Returns the arc cosine of `X`, that is, the value whose cosine is `X`.
 Returns NULL if `X` is not in the range -1 to 1, or if `X` is NULL.
 
-### asin(`x`) ☄️
+### asin(`x`) 🟢
 
 Returns the arc sine of `X`, that is, the value whose sine is `X`.
 Returns NULL if `X` is not in the range -1 to 1, or if `X` is NULL.
 
-### atan(`x`) ☄️
+### atan(`x`) 🟢
 
 Returns the arc tangent of `X`, that is, the value whose tangent is `X`.
 Returns NULL if `X` is NULL.
 
-### ceil(`x`) ☄️
+### ceil(`x`) 🟢
 
 ceil() is a synonym for `CEILING()`.
 
-### ceiling(`x`) ☄️
+### ceiling(`x`) 🟢
 
 Returns the smallest integer value not less than `X`. Returns NULL if `X` is NULL.
 
-### cos(`x`) ☄️
+### cos(`x`) 🟢
 
 Returns the cosine of `X`, where `X` is given in radians. Returns NULL if `X` is NULL.
 
-### cot(`x`) ☄️
+### cot(`x`) 🟢
 
 Returns the cotangent of `X`. Returns NULL if `X` is NULL.
 
-### degrees(`x`) ☄️
+### degrees(`x`) 🟢
 
 Returns the argument `X`, converted from radians to degrees. Returns NULL if `X` is NULL.
 
-### exp(`x`) ☄️
+### exp(`x`) 🟢
 
 Returns the value of e (the base of natural logarithms) raised to the power of `X`.
 
@@ -99,11 +101,11 @@ The inverse of this function is `LOG()` (using a single argument only) or `LN()`
 
 If `X` is NULL, this function returns NULL.
 
-### floor(`x`) ☄️
+### floor(`x`) 🟢
 
 Returns the largest integer value not greater than `X`. Returns NULL if `X` is NULL.
 
-### greatest(`x1`, `x2`, ...) ☄️
+### greatest(`x1`, `x2`, ...) 🟢
 
 With two or more arguments, returns the largest (maximum-valued) argument.
 The arguments are compared using the same rules as for `LEAST()`.
@@ -115,16 +117,16 @@ The arguments are compared using the same rules as for `LEAST()`.
 
 Returns NULL if any argument is NULL.
 
-### hex(`n` or `s`) ☄️
+### hex(`n` or `s`) 🟢
 
 This function can be used to obtain a hexadecimal representation of a decimal number or a string.
 
-### least(`x1`, `x2`, ...) ☄️
+### least(`x1`, `x2`, ...) 🟢
 
 With two or more arguments, returns the smallest (minimum-valued) argument.
 The arguments are compared using the same rules as for `GREATEST()`.
 
-### ln(`x`) ☄️
+### ln(`x`) 🟢
 
 Returns the natural logarithm of `X`; that is, the base-e logarithm of `X`.
 
@@ -135,7 +137,7 @@ This function is synonymous with LOG(`X`).
 
 The inverse of this function is `EXP()`.
 
-### log(`[b]`, `x`) ☄️
+### log(`[b]`, `x`) 🟢
 
 If called with one parameter, this function returns the natural logarithm of `X`.
 If `X` is less than or equal to 0, returns NULL.
@@ -150,7 +152,7 @@ If `X` is less than or equal to 0, or if `B` is less than or equal to 1, then NU
 
 `LOG`(`B`, `X`) is equivalent to `LOG`(`X`) / `LOG`(`B`).
 
-### log2(`x`) ☄️
+### log2(`x`) 🟢
 
 Returns the base-2 logarithm of `X`. If `X` is less than or equal to 0, returns NULL.
 
@@ -158,7 +160,7 @@ Returns NULL if `X` is NULL.
 
 This function is equivalent to the expression `LOG`(`X`) / `LOG`(2).
 
-### log10(`x`) ☄️
+### log10(`x`) 🟢
 
 Returns the base-10 logarithm of `X`. If `X` is less than or equal to 0, returns NULL.
 
@@ -166,85 +168,85 @@ Returns NULL if `X` is NULL.
 
 `LOG10`(`X`) is equivalent to `LOG`(10, `X`).
 
-### mod(`n`, `m`) ✔️
+### mod(`n`, `m`) 🟢
 
 Modulo operation. Returns the remainder of `N` divided by `M`. Returns NULL if `M` or `N` is NULL.
 
 `MOD`(`N`, 0) returns NULL.
 
-### pi() ☄️
+### pi() 🟢
 
 Returns the value of `π`(pi). The default number of decimal places displayed is 8,
 but uses the full double-precision value internally.
 
 
-### pow(`x`, `y`) ☄️
+### pow(`x`, `y`) 🟢
 
 Returns the value of `X` raised to the power of `Y`. Returns NULL if `X` or `Y` is NULL.
 
-### power(`x`, `y`) ☄️
+### power(`x`, `y`) 🟢
 
 This is a synonym for `POW()`.
 
-### radians(`x`) ☄️
+### radians(`x`) 🟢
 
 Returns the argument `X`, converted from degrees to radians. (Note that `π` radians equals 180 degrees.)
 
 Returns NULL if `X` is NULL.
 
-### rand(`[n]`) ☄️
+### rand(`[n]`) 🟢
 
 Returns a random floating-point value `v` in the range 0 <= `v` < 1.0.
 
 If an integer argument `N` is specified, it is used as the seed value.
 For equal argument values, `RAND`(`N`) returns the same value each time.
 
-### round(`x`, `[d]`) ☄️
+### round(`x`, `[d]`) 🟢
 
 Rounds the argument `X` to `D` decimal places.
 `D` defaults to 0 if not specified.
 `D` can be negative to cause `D` digits left of the decimal point of the value `X` to become zero.
 
-### sign(`x`) ☄️
+### sign(`x`) 🟢
 
 Returns the sign of the argument as -1, 0, or 1, depending on whether `X` is negative, zero, or positive.
 Returns NULL if `X` is NULL.
 
-### sin(`x`) ☄️
+### sin(`x`) 🟢
 
 Returns the sine of `X`, where `X` is given in radians. Returns NULL if `X` is NULL.
 
-### sqrt(`x`) ☄️
+### sqrt(`x`) 🟢
 
 Returns the square root of a non-negative number `X`. If `X` is NULL, the function returns NULL.
 
-### tan(`x`) ☄️
+### tan(`x`) 🟢
 
 Returns the tangent of `X`, where `X` is given in radians. Returns NULL if `X` is NULL.
 
-### truncate(`x`, `[d]`) ☄️
+### truncate(`x`, `[d]`) 🟢
 
 Returns the number `X`, truncated to `D` decimal places.
 If `D` is 0, the result has no decimal point or fractional part.
 `D` can be negative to cause `D` digits left of the decimal point of the value `X` to become zero.
 If `X` or `D` is NULL, returns NULL.
 
-## 日期时间/date and time
+## 日期时间/date and time 🔴
 
-## 字符串/string
+## 字符串/string 🟡
 
-### concat(`str1`, `str2`, ...) ✔️
+### concat(`str1`, `str2`, ...) 🟢
 
 Returns the string that results from concatenating the arguments. May have one or more arguments.
 
 Returns NULL if any argument is NULL.
 
-## 散列/hash
+## 散列/hash 🔴
 
-## 聚合/aggregate
+## 聚合/aggregate 🟡
 
-### sum(`expr`) ✔️
+### sum(`expr`) 🟢
 
 Returns the sum of `expr`(skip NULL value). If any expr is not a number, or all expr are NULL, returns NULL.
 
-## 其他/misc
+## 其他/misc 🔴

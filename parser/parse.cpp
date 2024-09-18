@@ -688,8 +688,8 @@ static void constant_fold(ASTNode *node) {
             break; // make compiler happy
     }
 
-    release_node(left);
-    release_node(right);
+    release_node(node->left);
+    release_node(node->right);
     node->atype = A_LITERAL; // now node itself is a literal
 }
 
@@ -1226,30 +1226,15 @@ static Pair<ASTNode *, TableSet *> parse_from() {
 }
 
 /**
- * generate from node of "from std", when no from clause, use std as default
+ * generate from node of "from dual", when no from clause, use the dummy table "dual"
  * @return the FROM node
  */
-static Pair<ASTNode *, TableSet *> from_std() {
+static Pair<ASTNode *, TableSet *> from_dual() {
     val from = new TableSet();
-    var index = 0;
+    from->insert({"<dual>.<dual>", {D_NONE, 0}});
 
-    val table = TABLES.at("std");
-    for (val &col: *table) {
-        // std.col1 is always valid because table name are unique and col1 is unique in table std
-        from->insert({"std." + col.first, {col.second, index}});
-        if (from->count(col.first)) {
-            // if col1 is already in the map, insert with -1 which means it's ambiguous
-            from->insert({col.first, {col.second, -1}});
-        } else {
-            // if col1 is unique for now, then has the same index with std.col1
-            from->insert({col.first, {col.second, index}});
-        }
-        index++;
-    }
-
-    TABLES_USED.insert({"std", "std"});
     val true_node = new ASTNode(A_LITERAL, D_BOOL, null, null, true);
-    val node = new ASTNode(A_JOIN, D_NONE, null, true_node, "std");
+    val node = new ASTNode(A_JOIN, D_NONE, null, true_node, DUAL);
     return {node, from};
 }
 
@@ -1368,7 +1353,7 @@ static SelectStatement *parse_select_stmt(const String &name, Vector<WithNode> *
         pop();
         from_pair = parse_from();
     } else {
-        from_pair = from_std();
+        from_pair = from_dual();
     }
 
     if (peek()->type == T_WHERE) {

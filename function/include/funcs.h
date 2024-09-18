@@ -10,7 +10,7 @@
 #include "util.h"
 
 #define ADD_FUNC(name, dtype, ftype) \
-FUNCTIONS[#name] = {dtype, ftype, tk_##name}
+FUNCTIONS.insert({#name, {dtype, ftype, tk_##name}})
 
 #define ADD_NORMAL(name, dtype) \
 ADD_FUNC(name, dtype, F_NORMAL)

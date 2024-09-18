@@ -450,7 +450,7 @@ static Result *apply_from(ASTNode *from, Map<String, Result *> *data) {
     }
 
     val left = apply_from(from->left, data);
-    val right = data->at(from->text);
+    val right = from->text == DUAL ? left : data->at(from->text);
 
     for (val &row1: *left) {
         for (val &row2: *right) {

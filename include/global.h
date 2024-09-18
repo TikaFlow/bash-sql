@@ -13,6 +13,7 @@
 
 // constants
 #define NONE "<null>"
+#define DUAL "<dual>"
 
 // version and copyright
 #define VERSION "1.0.1"
