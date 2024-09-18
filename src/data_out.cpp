@@ -4,54 +4,40 @@
 
 #include "data_out.h"
 
-void print_data(const Vector<Vector<String>> &data, const ProgramOptions &options) {
-    // column widths
-    Vector<int> col_ws;
-    for (val &row: data) {
-        for (var i = 0; i < row.size(); ++i) {
-            if (col_ws.size() <= i) {
-                col_ws.push_back(0);
-            }
-            col_ws[i] = std::max(col_ws[i], (int) (row[i].size()));
+void print_data(Result *data, Vector<SelectNode> *select, bool print_title, bool print_line_no) {
+    if (print_title) {
+        // title
+        if (print_line_no) {
+            cout << "| " << setw(6) << std::right << setfill(' ') << "No ";
         }
+        var coli = 1;
+        for (val &col: *select) {
+            cout << " | " << setw(16) << std::right << setfill(' ') <<
+                 (col.as.empty() ? "_col_" + to_string(coli) : col.as);
+            coli++;
+        }
+        cout << " |" << endl;
+
+        // dashes line
+        val size = select->size();
+        if (print_line_no) {
+            cout << "|" << setw(8) << std::right << setfill('-') << "";
+        }
+        for (var i = 0; i < size; i++) {
+            cout << "+" << setw(18) << std::right << setfill('-') << "";
+        }
+        cout << "|" << endl;
     }
 
-    // header
-    if (options.title) {
-        if (options.line_no) {
-            cout << setw(4) << std::right << "No" << " | ";
+    var line_no = 1;
+    for (val &row: *data) {
+        if (print_line_no) {
+            cout << "| " << setw(6) << std::right << setfill(' ') << line_no++;
         }
-        for (var i = 0; i < data[0].size(); ++i) {
-            cout << setw(col_ws[i]) << std::left << data[0][i];
-            if (i < data[0].size() - 1) {
-                cout << " | ";
-            }
-        }
-        cout << endl;
-        // dashed line
-        if (options.line_no) {
-            cout << setfill('-') << setw(6) << std::right << "+";
-        }
-        for (var i = 0; i < data[0].size(); ++i) {
-            cout << setfill('-') << setw(col_ws[i] + 2) << std::left << "-";
-            if (i < data[0].size() - 1) {
-                cout << "+";
-            }
-        }
-        cout << endl;
-    }
 
-    // data
-    for (var row = 1, lineNum = 1; row < data.size(); ++row, ++lineNum) {
-        if (options.line_no) {
-            cout << setfill(' ') << setw(4) << std::right << lineNum << " | ";
+        for (auto cell: *row) {
+            cout << " | " << setw(16) << std::right << setfill(' ') << cell->to_string();
         }
-        for (var i = 0; i < data[row].size(); ++i) {
-            cout << setfill(' ') << setw(col_ws[i]) << std::left << data[row][i];
-            if (i < data[row].size() - 1) {
-                cout << " | ";
-            }
-        }
-        cout << endl;
+        cout << " |" << endl;
     }
 }
