@@ -14,74 +14,13 @@
  */
 static void check_number(Row *row, const String &name, int index) {
     if (row->size() < index) {
-        show_error(name + ": wrong number of arguments");
+        wrong_arg_nums(name);
     }
 
     val cell = row->at(index - 1);
     if (cell->type != D_INTEGER && cell->type != D_REAL) {
         show_error(name + ": argument at index " + to_string(index) + " must be a number");
     }
-}
-
-/**
- * get greatest or least in the params
- * @param row params
- * @param name function name
- * @return result
- */
-static Cell *cell_compare(Row *row, const String &name) {
-    if (row->empty()) {
-        return new Cell(D_INTEGER);
-    }
-
-    var res = new Cell();
-    res->type = D_INTEGER;
-    for (val &cell: *row) {
-        if (cell->type == D_BOOL) {
-            res->text = NONE;
-            break;
-        } else if (cell->type == D_STRING) {
-            if (cell->text.empty()) {
-                res->text = NONE;
-                break;
-            }
-            res->type = D_STRING;
-        } else {
-            if (cell->text == NONE) {
-                res->text = NONE;
-                break;
-            }
-            if (cell->type == D_REAL) {
-                res->type = D_REAL;
-            }
-        }
-    }
-
-    if (res->text == NONE) {
-        if (res->type == D_STRING) {
-            res->text = "";
-        }
-        return res;
-    }
-
-    res->number = row->at(0)->number;
-    res->text = row->at(0)->text;
-    for (val &cell: *row) {
-        var cmp = false;
-        if (cell->type == D_STRING) {
-            cmp = name == "greatest" ? (cell->text > res->text) : (cell->text < res->text);
-            if (cmp) {
-                res->text = cell->text;
-            }
-        } else {
-            cmp = name == "greatest" ? (cell->number > res->number) : (cell->number < res->number);
-            if (cmp) {
-                res->number = cell->number;
-            }
-        }
-    }
-
-    return res;
 }
 
 /**
@@ -138,7 +77,7 @@ math2(Row *row, const String &name, double(*func)(double, double), Cell *first =
         left = row->at(0);
         right = row->at(1);
     } else {
-        show_error(name + ": wrong number of arguments");
+        wrong_arg_nums(name);
     }
 
     if (type == D_NONE) {
@@ -211,36 +150,6 @@ static Cell *tk_floor(Row *row) {
     return math1(row, "floor", floor, D_INTEGER);
 }
 
-static Cell *tk_greatest(Row *row) {
-    return cell_compare(row, "greatest");
-}
-
-static Cell *tk_hex(Row *row) {
-    if (row->size() != 1) {
-        show_error("hex: wrong number of arguments");
-    }
-
-    val cell = row->at(0);
-    if (cell->type != D_INTEGER && cell->type != D_STRING) {
-        show_error("hex: argument must be a integer or string");
-    }
-
-    std::ostringstream oss;
-    if (cell->type == D_INTEGER) {
-        oss << std::uppercase << std::hex << (int) cell->number;
-    } else {
-        for (char c: cell->text) {
-            oss << std::uppercase << std::hex << (int) c;
-        }
-    }
-
-    return new Cell(oss.str());
-}
-
-static Cell *tk_least(Row *row) {
-    return cell_compare(row, "least");
-}
-
 static Cell *tk_ln(Row *row) {
     return log_with_base(row, "ln");
 }
@@ -263,7 +172,7 @@ static Cell *tk_mod(Row *row) {
 
 static Cell *tk_pi(Row *row) {
     if (!row->empty()) {
-        show_error("pi: wrong number of arguments");
+        wrong_arg_nums("pi");
     }
 
     return new Cell(D_REAL, M_PI);
@@ -307,7 +216,7 @@ static Cell *tk_rand(Row *row) {
             return new Cell(D_REAL, rand);
         }
     } else {
-        show_error("rand: wrong number of arguments");
+        wrong_arg_nums("rand");
     }
 
     return null; // make compiler happy
@@ -353,9 +262,6 @@ void init_math_funcs() {
     ADD_NORMAL(degrees, D_REAL);
     ADD_NORMAL(exp, D_REAL);
     ADD_NORMAL(floor, D_INTEGER);
-    ADD_NORMAL(greatest, D_STRING);
-    ADD_NORMAL(hex, D_STRING);
-    ADD_NORMAL(least, D_STRING);
     ADD_NORMAL(ln, D_REAL);
     ADD_NORMAL(log, D_REAL);
     ADD_NORMAL(log2, D_REAL);

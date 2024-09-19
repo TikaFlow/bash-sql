@@ -15,10 +15,6 @@
 #define NONE "<null>"
 #define DUAL "<dual>"
 
-// version and copyright
-#define VERSION "1.1.0"
-#define AUTHOR "Tika Flow"
-
 // keyword
 #define var auto
 #define val const auto

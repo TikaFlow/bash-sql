@@ -6,6 +6,10 @@
 
 Map<String, Function> FUNCTIONS;
 
+void wrong_arg_nums(const String &func_name) {
+    show_error(func_name + ": wrong number of arguments");
+}
+
 void init_funcs() {
     init_type_funcs();
     init_flow_funcs();
@@ -14,5 +18,6 @@ void init_funcs() {
     init_string_funcs();
     init_hash_funcs();
     init_agg_funcs();
+    init_sys_funcs();
     init_misc_funcs();
 }

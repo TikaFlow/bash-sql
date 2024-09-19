@@ -30,6 +30,8 @@ struct Function {
 
 extern Map<String, Function> FUNCTIONS;
 
+void wrong_arg_nums(const String &func_name);
+
 void init_type_funcs();
 
 void init_flow_funcs();
@@ -43,6 +45,8 @@ void init_string_funcs();
 void init_hash_funcs();
 
 void init_agg_funcs();
+
+void init_sys_funcs();
 
 void init_misc_funcs();
 

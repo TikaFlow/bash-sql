@@ -17,6 +17,11 @@ project(bash-sql LANGUAGES CXX VERSION 1.0.0 DESCRIPTION "Using SQL-like languag
 # header files
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+# macros
+add_definitions(-DAPP_NAME="bash-sql")
+add_definitions(-DAUTHOR="Tika Flow")
+add_definitions(-DVERSION="1.1.0")
+
 # subdirectories
 add_subdirectory(util)
 add_subdirectory(function)

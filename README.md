@@ -108,14 +108,12 @@ from std where col2 not like 'PID';"
 - [atan](#atan) 🟢
 - [ceil](#ceil) 🟢
 - [ceiling](#ceiling) 🟢
+- [conv](#conv) 🟡
 - [cos](#cos) 🟢
 - [cot](#cot) 🟢
 - [degrees](#degrees) 🟢
 - [exp](#exp) 🟢
 - [floor](#floor) 🟢
-- [greatest](#greatest) 🟢
-- [hex](#hex) 🟢
-- [least](#least) 🟢
 - [ln](#ln) 🟢
 - [log](#log) 🟢
 - [log2](#log2) 🟢
@@ -135,22 +133,91 @@ from std where col2 not like 'PID';"
 
 ### date and time
 
+- [adddate](#adddate) 🟡
+- [addtime](#addtime) 🟡
+- [curdate](#curdate) 🟡
+- [current_date](#current_date) 🟡
+- [current_time](#current_time) 🟡
+- [current_timestamp](#current_timestamp) 🟡
+- [curtime](#curtime) 🟡
+- [date](#date) 🟡
+- [datediff](#datediff) 🟡
+- [data_add](#date_add) 🟡
+- [date_sub](#date_sub) 🟡
+- [day](#day) 🟡
+- [dayname](#dayname) 🟡
+- [dayofmonth](#dayofmonth) 🟡
+- [dayofweek](#dayofweek) 🟡
+- [dayofyear](#dayofyear) 🟡
+- [from_unixtime](#from_unixtime) 🟡
+- [hour](#hour) 🟡
+- [last_day](#last_day) 🟡
+- [localtime](#localtime) 🟡
+- [localtimestamp](#localtimestamp) 🟡
+- [makedate](#makedate) 🟡
+- [maketime](#maketime) 🟡
+- [minute](#minute) 🟡
+- [month](#month) 🟡
+- [monthname](#monthname) 🟡
 - [now](#now) 🟡
+- [quarter](#quarter) 🟡
+- [second](#second) 🟡
+- [sec_to_time](#sec_to_time) 🟡
+- [subdate](#subdate) 🟡
+- [subtime](#subtime) 🟡
+- [sysdate](#sysdate) 🟡
+- [time](#time) 🟡
+- [timediff](#timediff) 🟡
+- [time_to_sec](#time_to_sec) 🟡
+- [unix_timestamp](#unix_timestamp) 🟡
+- [week](#week) 🟡
+- [weekday](#weekday) 🟡
+- [weekofyear](#weekofyear) 🟡
+- [year](#year) 🟡
+- [yearweek](#yearweek) 🟡
 
 ### string
 
 - [ascii](#ascii) 🟡
+- [binary](#binary) 🟡
 - [char](#char) 🟡
 - [concat](#concat) 🟢
 - [concat_ws](#concat_ws) 🟡
 - [etl](#elt) 🟡
 - [field](#field) 🟡
 - [hex](#hex) 🟢
+- [inser](#insert) 🟡
+- [instr](#instr) 🟡
+- [lcase](#lcase) 🟡
 - [left](#left) 🟡
 - [length](#length) 🟡
+- [locate](#locate) 🟡
+- [lower](#lower) 🟡
+- [lpad](#lpad) 🟡
+- [ltrim](#ltrim) 🟡
+- [mid](#mid) 🟡
+- [oct](#oct) 🟡
+- [position](#position) 🟡
+- [repeat](#repeat) 🟡
+- [replace](#replace) 🟡
+- [reverse](#reverse) 🟡
+- [right](#right) 🟡
+- [rpad](#rpad) 🟡
+- [rtrim](#rtrim) 🟡
+- [space](#space) 🟡
+- [strcmp](#strcmp) 🟡
+- [substr](#substr) 🟡
+- [substring](#substring) 🟡
+- [substring_index](#substring_index) 🟡
+- [trim](#trim) 🟡
+- [ucase](#ucase) 🟡
+- [unhex](#unhex) 🟡
+- [upper](#upper) 🟡
 
 ### hash
 
+- [from_base64](#from_base64) 🟡
+- [to_base64](#to_base64) 🟡
 - [uuid](#uuid) 🟡
 
 ### aggregate
@@ -162,10 +229,19 @@ from std where col2 not like 'PID';"
 - [min](#min) 🟡
 - [sum](#sum) 🟢
 
+### system
+
+- [app_name](#app_name) 🟢
+- [author](#author) 🟢
+- [version](#version) 🟢
+
 ### misc
 
-- [version](#version) 🟡
-- [help](#help) 🟡
+- [coalese](#coalesce) 🟡
+- [greatest](#greatest) 🟢
+- [isnull](#isnull) 🟡
+- [least](#least) 🟢
+- [sleep](#sleep) 🟡
 
 ## Function description
 
@@ -183,6 +259,12 @@ Returns the absolute value of `X`, or NULL if `X` is NULL.
 Returns the arc cosine of `X`, that is, the value whose cosine is `X`.
 Returns NULL if `X` is not in the range -1 to 1, or if `X` is NULL.
 
+### app_name
+
+> prototype: app_name()
+
+Returns the application name.
+
 ### asin
 
 > prototype: asin(`x`)
@@ -196,6 +278,12 @@ Returns NULL if `X` is not in the range -1 to 1, or if `X` is NULL.
 
 Returns the arc tangent of `X`, that is, the value whose tangent is `X`.
 Returns NULL if `X` is NULL.
+
+### author
+
+> prototype: author()
+
+Returns the author of the application.
 
 ### ceil
 
@@ -419,3 +507,9 @@ Returns the number `X`, truncated to `D` decimal places.
 If `D` is 0, the result has no decimal point or fractional part.
 `D` can be negative to cause `D` digits left of the decimal point of the value `X` to become zero.
 If `X` or `D` is NULL, returns NULL.
+
+### version
+
+> prototype: version()
+
+Returns the version of the application.
