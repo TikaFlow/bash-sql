@@ -51,6 +51,7 @@ sql [选项] [查询语句]
 - `-v`, `--version`：输出版本信息并退出。
 - `-t`, `--title`：输出标题。
 - `-l`, `--line-no`：输出行号。
+- `-i`, `--interactive`: 交互模式。
 - `-f`, `--file=FILE`：从文件中读取数据。
 - `-d`, `--delimiter=DELIMITER`：指定字符作为字段分隔符。
 - `-c`, `--columns=COLUMNS`：指定数据源的列数。

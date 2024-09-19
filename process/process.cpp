@@ -513,7 +513,7 @@ static Map<String, Result *> *apply_group_by(Vector<ASTNode *> *group, Result *w
         } else {
             for (var &row: *where) {
                 var key = String();
-                for (auto &col: *group) {
+                for (val &col: *group) {
                     key += "㉿";
                     val cell = row->at((int) col->number);
                     if (col->dtype == D_STRING) {

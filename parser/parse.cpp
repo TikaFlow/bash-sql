@@ -557,9 +557,9 @@ static int expand_star(Vector<SelectNode> *select, int i, const String &table) {
     }
 
     select->erase(select->begin() + i);
-    for (auto &t: tables) {
+    for (val &t: tables) {
         val cols = t.second;
-        for (auto &col: *cols) {
+        for (val &col: *cols) {
             val name = t.first + "." + col.first;
             val dtype = col.second;
             val node = new ASTNode(A_COLUMN, dtype, null, null, name);

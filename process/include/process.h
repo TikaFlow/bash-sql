@@ -5,7 +5,6 @@
 #ifndef BASH_SQL_PROCESS_H
 #define BASH_SQL_PROCESS_H
 
-#include "getopt_util.h"
 #include "defs.h"
 #include "funcs.h"
 

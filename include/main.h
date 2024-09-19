@@ -7,9 +7,36 @@
 
 #include <iostream>
 #include <string>
-#include "getopt_util.h"
+#include <unistd.h>
+#include <vector>
+#include <getopt.h>
+#include <sys/wait.h>
+#include <csignal>
 #include "parser.h"
 #include "process.h"
-#include "data_out.h"
+
+#define NO_LEN 5
+#define COL_INIT_LEN 8
+#define COL_PREFIX "__col_"
+
+// declare struct
+struct ProgramOptions {
+    bool title;
+    bool line_no;
+    bool interactive;
+    String data;
+    String file;
+    char delimiter;
+    int columns;
+    String query;
+};
+
+ProgramOptions *parse_cmd_options(int argc, char *argv[]);
+
+int handle_curd(ProgramOptions *options);
+
+int read_and_exec(ProgramOptions *options);
+
+void print_data(Result *data, Vector<SelectNode> *select, bool print_title, bool print_line_no);
 
 #endif //BASH_SQL_MAIN_H

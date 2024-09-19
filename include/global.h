@@ -16,7 +16,7 @@
 #define DUAL "<dual>"
 
 // version and copyright
-#define VERSION "1.0.1"
+#define VERSION "1.1.0"
 #define AUTHOR "Tika Flow"
 
 // keyword
@@ -55,6 +55,7 @@ using std::setfill;
 using std::cin;
 using std::cout;
 using std::cerr;
+using std::flush;
 val npos = String::npos;
 
 #endif //BASH_SQL_GLOBAL_H

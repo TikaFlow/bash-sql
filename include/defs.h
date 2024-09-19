@@ -5,6 +5,8 @@
 #ifndef BASH_SQL_DEFS_H
 #define BASH_SQL_DEFS_H
 
+#include "global.h"
+
 /**
  * select statement
  * @note writing order: with -> select -> from -> where -> group -> order -> limit

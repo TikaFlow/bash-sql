@@ -53,6 +53,7 @@ sql [OPTION] [QUERIES]
 - `-v`, `--version`: Output version information and exit.
 - `-t`, `--title`: Print table title.
 - `-l`, `--line-no`: Print line number.
+- `-i`, `--interactive`: Interactive mode.
 - `-f`, `--file=FILE`: Read data from FILE.
 - `-d`, `--delimiter=DELIMITER`: Use DELIMITER as field delimiter.
 - `-c`, `--columns=COLUMNS`: Use COLUMNS as number of columns.

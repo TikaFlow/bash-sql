@@ -15,7 +15,7 @@ Vector<SelectStatement *> *parse_sql(const String &sql, int col_count) {
     }
     val tokens = lex(sql);
     // DEBUG
-    // for (auto &token: *tokens) {
+    // for (val &token: *tokens) {
     //     std::cout << token->type << " " << token->text << std::endl;
     // }
     // DEBUG END
