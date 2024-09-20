@@ -16,14 +16,15 @@ String Token::to_string() const {
 }
 
 static int INDEX = 0;
-static String SQL;
 static Map<String, TokenType> KEYWORD;
 static Map<TokenType, String> DESC;
 
 /**
  * initialize the keyword map and description map
  */
-static void init_map() {
+static void init_lexer() {
+    INDEX = 0;
+
     if (!KEYWORD.empty() && !DESC.empty()) {
         return;
     }
@@ -77,11 +78,10 @@ static void init_map() {
  * @return the next character
  */
 static char next() {
-    static val len = SQL.length();
-    if (INDEX >= len) {
+    if (INDEX >= options->sql.length()) {
         return EOF;
     }
-    return SQL.at(INDEX++);
+    return options->sql.at(INDEX++);
 }
 
 /**
@@ -227,7 +227,7 @@ static void scan_string(Token *token, char quote) {
         show_error("unterminated string");
     } else {
         token->type = T_STRING;
-        String str = SQL.substr(start, INDEX - start - 1);
+        String str = options->sql.substr(start, INDEX - start - 1);
         token->text = escape_string(str);
     }
 }
@@ -254,7 +254,7 @@ static void scan_number(Token *token) {
 
     token->type = dot ? T_REAL : T_INTEGER;
     prev(c);
-    String str = SQL.substr(start, INDEX - start);
+    String str = options->sql.substr(start, INDEX - start);
     if (dot) {
         token->real = stod(str);
     } else {
@@ -283,7 +283,7 @@ static void scan_identifier(Token *token) {
     }
 
     token->type = T_IDENTIFIER;
-    token->text = SQL.substr(start, INDEX - start);
+    token->text = options->sql.substr(start, INDEX - start);
 
     check_keyword(token);
 }
@@ -376,8 +376,7 @@ static Token *scan() {
  * @return vector, which contains all tokens
  */
 Vector<Token *> *lex() {
-    SQL = options->sql;
-    init_map();
+    init_lexer();
 
     val tokens = new Vector<Token *>();
     Token *tk;

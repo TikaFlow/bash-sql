@@ -21,46 +21,6 @@ String Cell::to_string() const {
 static Cell *evaluate(Result *data, ASTNode *exp);
 
 /**
- * prepare data from string
- * @param data data string
- * @param col_count column count
- * @param d delimiter
- * @return data of table format
- */
-static Result *prepare_data(const String &data, int col_count, char d) {
-    val res = new Result();
-    var lines = split_string(data, '\n');
-    for (var &line: *lines) {
-        val row = new Row();
-        var cols = d ? split_string(line, d) : split_string_by_spaces(line);
-
-        val size = cols->size();
-        if (size > col_count) {
-            for (var i = col_count; i < size; i++) {
-                cols->at(col_count - 1) += "|" + cols->at(i);
-            }
-        }
-        cols->resize(col_count);
-
-        for (val &col: *cols) {
-            if (is_integer(col)) {
-                row->emplace_back(new Cell(D_INTEGER, stoi(col)));
-            } else if (is_double(col)) {
-                row->emplace_back(new Cell(D_REAL, stod(col)));
-            } else if (col == "true" || col == "false") {
-                row->emplace_back(new Cell(D_BOOL, col == "true"));
-            } else {
-                row->emplace_back(new Cell(col));
-            }
-        }
-
-        res->emplace_back(row);
-    }
-
-    return res;
-}
-
-/**
  * make new row from two rows
  * @param left left row
  * @param right right row
@@ -651,9 +611,11 @@ static Result *apply_stmt(SelectStatement *stmt, Map<String, Result *> *data) {
  * @param pre_data prepared table data
  * @return data set of table
  */
-static Map<String, Result *> *apply_with(Vector<WithNode> *with, Result *pre_data) {
-    val res = new Map<String, Result *>;
-    res->insert({"std", pre_data});
+static Map<String, Result *> *apply_with(Vector<WithNode> *with) {
+    val res = new Map<String, Result *>();
+    for (val &table: *db) {
+        res->insert({table.first, table.second.second});
+    }
 
     if (!with) {
         return res;
@@ -683,12 +645,14 @@ Result *apply_read(SelectStatement *query, const String &data, int col_count, ch
         show_error("Data is empty, but query is not tableless");
     }
 
-    val pre_data = prepare_data(data, col_count, d);
-    val with_data = apply_with(query->with, pre_data);
+    val with_data = apply_with(query->with);
     val res = apply_stmt(query, with_data);
 
     // free with_data
     for (val &result: *with_data) {
+        if (db->count(result.first)) {
+            continue;
+        }
         free_result(result.second);
     }
     delete with_data;

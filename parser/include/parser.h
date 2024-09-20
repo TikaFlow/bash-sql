@@ -7,7 +7,7 @@
 
 #include "lexer.h"
 
-Statement parse_read(Vector<Token *> *tokens, int col_count);
+Statement parse_read(Vector<Token *> *tokens);
 
 Statement parse(Vector<Token *> *tokens);
 

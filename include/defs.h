@@ -160,9 +160,10 @@ using Result = Vector<Row *>;
 // column type, column index in the table(0-indexed), -1 if ambiguous
 using ColumnDesc = Pair<DataType, int>;
 // column name, columns type
-using Table = Vector<Pair<String, DataType>>;
+using Schema = Vector<Pair<String, DataType>>;
 using TableSet = Map<String, ColumnDesc>;
 
 extern ProgramOptions *options;
+extern Map<String, Pair<Schema *, Result *>> *db;
 
 #endif //BASH_SQL_DEFS_H

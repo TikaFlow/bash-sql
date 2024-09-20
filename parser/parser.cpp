@@ -12,7 +12,7 @@
 Statement parse(Vector<Token *> *tokens) {
     // DEBUG
     // for (val &token: *tokens) {
-    //     std::cout << token->type << " " << token->text << std::endl;
+    //     std::cout << token->to_string() << std::endl;
     // }
     // DEBUG END
     Statement stmt{};
@@ -21,7 +21,7 @@ Statement parse(Vector<Token *> *tokens) {
     switch (start->type) {
         case T_WITH:
         case T_SELECT:
-            stmt = parse_read(tokens, options->columns);
+            stmt = parse_read(tokens);
             break;
         default:
             show_error("Unknown SQL statement");

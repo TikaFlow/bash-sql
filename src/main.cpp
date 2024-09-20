@@ -11,14 +11,16 @@
 #define OK_MSG "OK."
 
 int main(int argc, char *argv[]) {
+    // init_parser signal handler
     signal(SIGINT, [](int) { cout << endl << "Type 'exit' to exit." << flush; });
 
-    // initialize functions mapping
+    // init_parser functions mapping
     init_funcs();
-
-    // parse command line options
+    // init_parser global variables
     options = parse_cmd_options(argc, argv);
+    db = new Map<String, Pair<Schema *, Result *>>();
 
+    prepare_data("std");
     if (options->interactive) {
         interactive();
     } else {
@@ -212,11 +214,6 @@ ProgramOptions *parse_cmd_options(int argc, char *argv[]) {
         exit(0);
     }
 
-    // if column number is not specified, use default value
-    if (!opt->columns) {
-        opt->columns = 32;
-    }
-
     // get data string
     if (file) {
         opt->data = read_file_to_string(filename);
@@ -265,20 +262,67 @@ void interactive() {
             break;
         }
 
-        if (fork()) {
-            int status;
-            waitpid(-1, &status, 0);
-
-            if (status) {
-                cout << endl << ERROR_MSG;
-            } else {
-                cout << endl << OK_MSG;
-            }
-        } else {
+        try {
             handle_curd();
-            return;
+        } catch (...) {
+            cout << endl << ERROR_MSG << flush;
         }
     }
+}
+
+/**
+ * prepare data from string
+ * @param data data string
+ * @return data of table format
+ */
+void prepare_data(const String &table) {
+    var lines = split_string(options->data, '\n');
+
+    if (lines->empty()) {
+        return;
+    }
+    // data has been trimmed so that the first line won't be empty
+
+    val res = new Result();
+    for (var &line: *lines) {
+        val row = new Row();
+        var cols = options->delimiter
+                   ? split_string(line, options->delimiter)
+                   : split_string_by_spaces(line);
+
+        // correct columns count
+        if (!options->columns) {
+            options->columns = (int) cols->size();
+        }
+
+        val size = cols->size();
+        if (size > options->columns) {
+            for (var i = options->columns; i < size; i++) {
+                cols->at(options->columns - 1) += "|" + cols->at(i);
+            }
+        }
+        cols->resize(options->columns);
+
+        for (val &col: *cols) {
+            if (is_integer(col)) {
+                row->emplace_back(new Cell(D_INTEGER, stoi(col)));
+            } else if (is_double(col)) {
+                row->emplace_back(new Cell(D_REAL, stod(col)));
+            } else if (col == "true" || col == "false") {
+                row->emplace_back(new Cell(D_BOOL, col == "true"));
+            } else {
+                row->emplace_back(new Cell(col));
+            }
+        }
+
+        res->emplace_back(row);
+    }
+    val schema = new Schema();
+    for (var i = 0; i < options->columns; ++i) {
+        schema->push_back({"col" + std::to_string(i + 1), D_STRING});
+    }
+
+    db->insert({table, {schema, res}});
 }
 
 /**
@@ -339,6 +383,9 @@ void print_data(Result *data, Vector<SelectNode> *select) {
         }
         cout << " |" << endl;
     }
+
+    cout << endl << OK_MSG << flush;
 }
 
 ProgramOptions *options;
+Map<String, Pair<Schema *, Result *>> *db;

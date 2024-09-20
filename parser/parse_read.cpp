@@ -54,13 +54,11 @@ static const Vector<Token *> *TOKENS;
 // selected alias: <aliases, index>
 static Map<String, int> ALIAS;
 // columns selected
-static Table *SELECTS;
+static Schema *SELECTS;
 // table used: <alias, origin table>
 static Map<String, String> TABLES_USED;
 // all tables
-static Map<String, Table *> TABLES;
-// init column number, 32 by default
-static int COL_NUM;
+static Map<String, Schema *> TABLES;
 
 static ASTNode *expression();
 
@@ -70,8 +68,7 @@ static ASTNode *expression();
  * @return token, null if no more token
  */
 static Token *peek(bool accept_eof = false) {
-    static val size = TOKENS->size();
-    if (INDEX >= size) {
+    if (INDEX >= TOKENS->size()) {
         if (!accept_eof) {
             show_error("Unexpected end of sql");
         }
@@ -121,14 +118,14 @@ static Token *match(TokenType type, const String &what) {
 /**
  * initialize the std table
  */
-static void init_std() {
-    val std = new Table();
+static void init_parser(Vector<Token *> *tokens) {
+    TOKENS = tokens;
+    INDEX = 0;
+    TABLES.clear();
 
-    for (var i = 0; i < COL_NUM; ++i) {
-        std->push_back({"col" + std::to_string(i + 1), D_STRING});
+    for (val &table: *db) {
+        TABLES.insert({table.first, table.second.first});
     }
-
-    TABLES.insert({"std", std});
 }
 
 /**
@@ -136,7 +133,7 @@ static void init_std() {
  */
 static void stmt_start() {
     ALIAS.clear();
-    SELECTS = new Table();
+    SELECTS = new Schema();
     TABLES_USED.clear();
 }
 
@@ -548,7 +545,7 @@ static ASTNode *expression() {
  */
 static int expand_star(Vector<SelectNode> *select, int i, const String &table) {
     int count = 0;
-    var tables = Map<String, Table *>();
+    var tables = Map<String, Schema *>();
 
     if (table.empty()) { // *
         for (val &t: TABLES_USED) {
@@ -1429,10 +1426,8 @@ static SelectStatement *parse_with() {
  * parse SELECT statements separated by semicolon
  * @return vector of SELECT statements
  */
-Statement parse_read(Vector<Token *> *tokens, int col_count) {
-    TOKENS = tokens;
-    COL_NUM = col_count;
-    init_std();
+Statement parse_read(Vector<Token *> *tokens) {
+    init_parser(tokens);
 
     SelectStatement *stmt;
 
@@ -1443,13 +1438,7 @@ Statement parse_read(Vector<Token *> *tokens, int col_count) {
         stmt = parse_with();
     }
 
-    if ((tk = peek(true)) && tk->type == T_SEMICOLON) {
-        pop();
-    }
-
-    if (INDEX < TOKENS->size()) {
-        show_error("Unexpected token after SELECT statement");
-    }
+    match(T_SEMICOLON, "semicolon at the end of sql statement");
 
     return Statement{S_SELECT, stmt};
 }
