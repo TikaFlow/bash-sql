@@ -978,6 +978,9 @@ static void validate_select(TableSet *from, Vector<SelectNode> *select) {
         } else if (col_exp.col->atype == A_COLUMN) {
             name = resolve_column(col_exp.col->text)->second;
             col_exp.as = name;
+        } else if (col_exp.col->atype == A_FUNC_CALL) {
+            name = col_exp.col->text;
+            col_exp.as = name + "()"; // add '()' to avoid subsequent use, just for printing
         }
 
         // dtype has been repaired

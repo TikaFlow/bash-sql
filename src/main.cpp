@@ -21,10 +21,9 @@ int main(int argc, char *argv[]) {
     db = new Map<String, Pair<Schema *, Result *>>();
 
     prepare_data("std");
+    handle_curd();
     if (options->interactive) {
         interactive();
-    } else {
-        handle_curd();
     }
 
     return 0;
@@ -53,42 +52,7 @@ static void show_help() {
             "\n"
             "Usage: sql [OPTION] [QUERIES]\n"
             "\n"
-            "Options:\n"
-            "  -h, --help                   display this help and exit.\n"
-            "  -v, --version                output version information and exit.\n"
-            "  -t, --title                  print table title.\n"
-            "  -l, --line-no                print line number.\n"
-            "  -f, --file=FILE              read data from FILE.\n"
-            "  -d, --delimiter=DELIMITER    use DELIMITER as field delimiter.\n"
-            "  -c, --columns=COLUMNS        use COLUMNS as number of columns.\n"
-            "\n"
-            "Queries:\n"
-            "  QUERY [ | QUERY2 [...] ]\n"
-            "       each query is a sql-like select statement separated by `|`:\n"
-            "\n"
-            "       select COLUMNS [WHERE] [ORDER BY] [LIMITS]\n"
-            "\n"
-            "       keywords are case-insensitive.\n"
-            "  COLUMNS      list columns to select.\n"
-            "       use '*' to select all columns.\n"
-            "       default column names are col1, col2, ...\n"
-            "       aliasing column by using 'as'.\n"
-            "  WHERE        filter rows with like clause or reg clause.\n"
-            "       use 'column like pattern' or 'column reg pattern' to filter.\n"
-            "       add 'not' before 'like' or 'reg' to reverse.\n"
-            "       when 'like', % and _ are supported just like in mysql, and escape them by \\.\n"
-            "       when 'reg', pattern should be a regular expression.\n"
-            "       pattern needs no quotes.\n"
-            "  ORDER BY     reorder data after selecting.\n"
-            "       specify one or more columns to order by.\n"
-            "       use 'asc' for ascending, 'desc' for descending.\n"
-            "       'asc' can be omitted.\n"
-            "  LIMITS       limit output lines.\n"
-            "       either 'limit lines' or 'limit offset, lines' are supported.\n"
-            "\n"
-            "Example:\n"
-            "  ps -aux | sql -tlc11 \"select col1 as user, col2 as pid, col9 as start, col11 as command \\\n"
-            "  where col2 not like PID | select * order by start desc limit 10\"\n" << endl;
+            "For more information, please see the README documentation.\n" << endl;
 }
 
 /**
@@ -244,7 +208,6 @@ void handle_curd() {
  * @param options CURD options
  */
 void interactive() {
-    // var tables = Vector<String>();
 
     while (true) {
         cout << endl << " (sql) > " << flush;
@@ -325,6 +288,16 @@ void prepare_data(const String &table) {
     db->insert({table, {schema, res}});
 }
 
+void static print_dashes(Vector<int> &cw, size_t size) {
+    if (options->line_no) {
+        cout << "+" << setw(NO_LEN) << std::right << setfill('-') << "" << "-";
+    }
+    for (var i = 0; i < size; i++) {
+        cout << "+-" << setw(cw.at(i)) << std::right << setfill('-') << "" << "-";
+    }
+    cout << "+" << endl;
+}
+
 /**
  * Print data
  * @param data data
@@ -338,6 +311,9 @@ void print_data(Result *data, Vector<SelectNode> *select) {
             if (cw.size() <= i) {
                 // the first row
                 cw.push_back(COL_INIT_LEN);
+                if (cw.at(i) < select->at(i).as.length()) {
+                    cw.at(i) = (int) select->at(i).as.length();
+                }
             }
 
             val cell_len = row->at(i)->to_string().length();
@@ -347,31 +323,22 @@ void print_data(Result *data, Vector<SelectNode> *select) {
         }
     }
 
-    if (options->title) {
-        // title
-        if (options->line_no) {
-            cout << "| " << setw(NO_LEN) << std::right << setfill(' ') << "  No ";
-        }
-        var coli = 1;
-        for (var i = 0; i < select->size(); ++i) {
-            val as = select->at(i).as;
-            cout << " | " << setw(cw.at(i)) << std::right << setfill(' ') <<
-                 (as.empty() ? COL_PREFIX + to_string(coli) : as);
-            coli++;
-        }
-        cout << " |" << endl;
-
-        // dashes line
-        val size = select->size();
-        if (options->line_no) {
-            cout << "|-" << setw(NO_LEN) << std::right << setfill('-') << "";
-        }
-        for (var i = 0; i < size; i++) {
-            cout << "-+-" << setw(cw.at(i)) << std::right << setfill('-') << "";
-        }
-        cout << "-|" << endl;
+    // title
+    print_dashes(cw, select->size());
+    if (options->line_no) {
+        cout << "| " << setw(NO_LEN) << std::right << setfill(' ') << "  No ";
     }
+    var coli = 1;
+    for (var i = 0; i < select->size(); ++i) {
+        val as = select->at(i).as;
+        cout << "| " << setw(cw.at(i)) << std::right << setfill(' ') <<
+             (as.empty() ? COL_PREFIX + to_string(coli) : as) << " ";
+        coli++;
+    }
+    cout << "|" << endl;
+    print_dashes(cw, select->size());
 
+    // data
     var line_no = 1;
     for (val &row: *data) {
         if (options->line_no) {
@@ -379,10 +346,12 @@ void print_data(Result *data, Vector<SelectNode> *select) {
         }
 
         for (var i = 0; i < row->size(); ++i) {
-            cout << " | " << setw(cw.at(i)) << std::right << setfill(' ') << row->at(i)->to_string();
+            cout << "| " << setw(cw.at(i)) << std::right << setfill(' ')
+                 << row->at(i)->to_string() << " ";
         }
-        cout << " |" << endl;
+        cout << "|" << endl;
     }
+    print_dashes(cw, select->size());
 
     cout << endl << OK_MSG << flush;
 }
