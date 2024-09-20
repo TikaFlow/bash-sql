@@ -2,7 +2,18 @@
 // Created by tika on 24-8-14.
 //
 
-#include "lex.h"
+#include "lexer.h"
+
+String Token::to_string() const {
+    switch (this->type) {
+        case T_INTEGER:
+            return ::to_string(this->integer);
+        case T_REAL:
+            return ::to_string(this->real);
+        default:
+            return this->text;
+    }
+}
 
 static int INDEX = 0;
 static String SQL;
@@ -13,6 +24,10 @@ static Map<TokenType, String> DESC;
  * initialize the keyword map and description map
  */
 static void init_map() {
+    if (!KEYWORD.empty() && !DESC.empty()) {
+        return;
+    }
+
     KEYWORD.insert({"select", T_SELECT});
     KEYWORD.insert({"as", T_AS});
     KEYWORD.insert({"from", T_FROM});
@@ -358,11 +373,10 @@ static Token *scan() {
 
 /**
  * scan tokens from a sql string
- * @param sql the sql string to be scanned
  * @return vector, which contains all tokens
  */
-Vector<Token *> *lex(const String &sql) {
-    SQL = sql;
+Vector<Token *> *lex() {
+    SQL = options->sql;
     init_map();
 
     val tokens = new Vector<Token *>();

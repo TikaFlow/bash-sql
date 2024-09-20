@@ -8,6 +8,8 @@
 #include "defs.h"
 #include "funcs.h"
 
-Result *apply(SelectStatement *query, const String &data, int col_count, char d);
+Result *apply_read(SelectStatement *query, const String &data, int col_count, char d);
+
+Result *process(Statement stmt);
 
 #endif //BASH_SQL_PROCESS_H

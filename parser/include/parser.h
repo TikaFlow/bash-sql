@@ -5,9 +5,10 @@
 #ifndef BASH_SQL_PARSER_H
 #define BASH_SQL_PARSER_H
 
-#include "lex.h"
-#include "parse.h"
+#include "lexer.h"
 
-Vector<SelectStatement *> *parse_sql(const String &sql, int col_count);
+Statement parse_read(Vector<Token *> *tokens, int col_count);
+
+Statement parse(Vector<Token *> *tokens);
 
 #endif //BASH_SQL_PARSER_H

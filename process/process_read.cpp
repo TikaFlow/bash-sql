@@ -675,7 +675,7 @@ static Map<String, Result *> *apply_with(Vector<WithNode> *with, Result *pre_dat
  * @param d the delimiter of the data, default is "\\s+"
  * @return the processed data
  */
-Result *apply(SelectStatement *query, const String &data, int col_count, char d) {
+Result *apply_read(SelectStatement *query, const String &data, int col_count, char d) {
     if (!query) {
         return null;
     }
@@ -691,7 +691,6 @@ Result *apply(SelectStatement *query, const String &data, int col_count, char d)
     for (val &result: *with_data) {
         free_result(result.second);
     }
-    with_data->clear();
     delete with_data;
 
     return res;

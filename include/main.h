@@ -15,28 +15,12 @@
 #include "parser.h"
 #include "process.h"
 
-#define NO_LEN 5
-#define COL_INIT_LEN 8
-#define COL_PREFIX "__col_"
-
-// declare struct
-struct ProgramOptions {
-    bool title;
-    bool line_no;
-    bool interactive;
-    String data;
-    String file;
-    char delimiter;
-    int columns;
-    String query;
-};
-
 ProgramOptions *parse_cmd_options(int argc, char *argv[]);
 
-int handle_curd(ProgramOptions *options);
+void handle_curd();
 
-int read_and_exec(ProgramOptions *options);
+void interactive();
 
-void print_data(Result *data, Vector<SelectNode> *select, bool print_title, bool print_line_no);
+void print_data(Result *data, Vector<SelectNode> *select);
 
 #endif //BASH_SQL_MAIN_H

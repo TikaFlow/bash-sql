@@ -4,31 +4,28 @@
 
 #include "main.h"
 
+#define NO_LEN 5
+#define COL_INIT_LEN 8
+#define COL_PREFIX "__col_"
 #define ERROR_MSG "1 ERROR."
 #define OK_MSG "OK."
 
-bool INTERACTIVE_MODE = false;
-
 int main(int argc, char *argv[]) {
-    signal(SIGINT, [](int) {
-        if (INTERACTIVE_MODE) {
-            cout << endl << "Please type 'exit' to exit." << endl << " (sql) > " << flush;
-        } else {
-            exit(130);
-        }
-    });
+    signal(SIGINT, [](int) { cout << endl << "Type 'exit' to exit." << flush; });
 
     // initialize functions mapping
     init_funcs();
 
     // parse command line options
-    val options = parse_cmd_options(argc, argv);
+    options = parse_cmd_options(argc, argv);
 
     if (options->interactive) {
-        return read_and_exec(options);
+        interactive();
+    } else {
+        handle_curd();
     }
 
-    return handle_curd(options);
+    return 0;
 }
 
 /**
@@ -99,12 +96,13 @@ static void show_help() {
  * @return program options
  */
 ProgramOptions *parse_cmd_options(int argc, char *argv[]) {
-    val options = new ProgramOptions{false, false, false, "", "", '\0', 0, ""};
+    val opt = new ProgramOptions{false, false, false, "", '\0', 0, ""};
 
     var help = false;
     var version = false;
     var data = false;
     var file = false;
+    var filename = String();
 
     static option long_options[] = {
             {"help",        no_argument,       null, 'h'},
@@ -123,10 +121,10 @@ ProgramOptions *parse_cmd_options(int argc, char *argv[]) {
         data = true;
         String line;
         while (getline(cin, line)) {
-            options->data += line + "\n";
+            opt->data += line + "\n";
         }
-        if (!options->data.empty()) {
-            options->data.pop_back();
+        if (!opt->data.empty()) {
+            opt->data.pop_back();
         }
     }
 
@@ -140,13 +138,13 @@ ProgramOptions *parse_cmd_options(int argc, char *argv[]) {
                 version = true;
                 break;
             case 't':
-                options->title = true;
+                opt->title = true;
                 break;
             case 'l':
-                options->line_no = true;
+                opt->line_no = true;
                 break;
             case 'i':
-                options->interactive = true;
+                opt->interactive = true;
                 break;
             case 'f':
                 // check file exists
@@ -154,14 +152,14 @@ ProgramOptions *parse_cmd_options(int argc, char *argv[]) {
                     arg_error("File not found: " + String(optarg));
                 }
                 file = true;
-                options->file = optarg;
+                filename = optarg;
                 break;
             case 'd':
-                options->delimiter = optarg[0];
+                opt->delimiter = optarg[0];
                 break;
             case 'c':
-                options->columns = stoi(optarg);
-                if (options->columns < 0) {
+                opt->columns = stoi(optarg);
+                if (opt->columns < 0) {
                     arg_error("Invalid column number: " + String(optarg));
                 }
                 break;
@@ -174,17 +172,18 @@ ProgramOptions *parse_cmd_options(int argc, char *argv[]) {
         }
     }
 
-    // query string
+    // sql string
     for (var i = optind; i < argc; ++i) {
-        options->query += argv[i];
+        opt->sql += argv[i];
         if (i < argc - 1) {
-            options->query += " ";
+            opt->sql += " ";
         }
     }
 
+    opt->sql = trim(opt->sql);
     // check mutually exclusive options
     if (help || version) {
-        if (options->title || data || file || options->delimiter || options->columns || !options->query.empty()) {
+        if (opt->title || data || file || opt->delimiter || opt->columns || !opt->sql.empty()) {
             if (help) {
                 arg_error("Help option cannot be used with other options.");
             }
@@ -194,7 +193,7 @@ ProgramOptions *parse_cmd_options(int argc, char *argv[]) {
         }
     } else {
         if (data && file) {
-            arg_error("Only file or standard input should be specified.");
+            arg_error("File and Standard Input cannot be specified simultaneously.");
         }
     }
 
@@ -214,99 +213,58 @@ ProgramOptions *parse_cmd_options(int argc, char *argv[]) {
     }
 
     // if column number is not specified, use default value
-    if (!options->columns) {
-        options->columns = 32;
+    if (!opt->columns) {
+        opt->columns = 32;
     }
 
     // get data string
     if (file) {
-        options->data = read_file_to_string(options->file);
+        opt->data = read_file_to_string(filename);
     }
 
-    return options;
-}
-
-/**
- * Read source file and return data string
- * @param line source command line
- * @param columns column number to save in
- * @param delimiter delimiter to save in
- * @return data string
- */
-static String source_file(const String &line, int &columns, char &delimiter) {
-    val rest = trim(line.substr(6, line.length() - 6));
-    val args = split_string_by_spaces(rest);
-
-    if (args->empty()) {
-        show_warn("Invalid source command: " + line);
-        cout << "Usage: source <file> [colum count [delimiter]]" << endl
-             << endl << ERROR_MSG << flush;
-        return {};
-    }
-
-    val data = read_file_to_string(args->at(0));
-    if (args->size() >= 2) {
-        columns = stoi(args->at(1));
-    } else {
-        columns = 32;
-    }
-    if (args->size() >= 3) {
-        delimiter = args->at(2)[0];
-    } else {
-        delimiter = '\0';
-    }
-
-    return data;
+    return opt;
 }
 
 /**
  * Handle CURD operations
  * @param options CURD options
- * @return 0 if success
  */
-int handle_curd(ProgramOptions *options) {
-    val queries = parse_sql(options->query, options->columns);
-    for (val &query: *queries) {
-        val result = apply(query, options->data, options->columns, options->delimiter);
-        print_data(result, query->select, options->title, options->line_no);
+void handle_curd() {
+    val tokens = lex();
+    if (tokens->empty()) {
+        return;
     }
 
-    return 0;
+    val query = parse(tokens);
+
+    val result = process(query);
+
+    print_data(result, query.stmt_r->select);
 }
 
 /**
  * Read and execute SQL commands in interactive mode
  * @param options CURD options
- * @return 0 if success
  */
-int read_and_exec(ProgramOptions *options) {
-    INTERACTIVE_MODE = true;
+void interactive() {
     // var tables = Vector<String>();
 
     while (true) {
         cout << endl << " (sql) > " << flush;
 
-        var line = String();
-        std::getline(std::cin, line);
-        line = trim(line);
+        std::getline(std::cin, options->sql);
+        options->sql = trim(options->sql);
 
-        if (line.empty()) {
+        if (options->sql.empty()) {
             continue;
         }
 
-        val first = split_string_by_spaces(line)->at(0);
-        if (first == "exit" || first == "exit()" || first == "exit;" || first == "exit();") {
+        val &cmd = options->sql;
+        if (cmd == "exit" || cmd == "exit()" || cmd == "exit;" || cmd == "exit();") {
             cout << "Bye!" << endl;
             break;
-        } else if (first == "source") {
-            options->data = source_file(line, options->columns, options->delimiter);
-            continue;
-        } else if (first == "help") {
-            show_help();
-            continue;
         }
 
-        options->query = line;
         if (fork()) {
             int status;
             waitpid(-1, &status, 0);
@@ -317,21 +275,18 @@ int read_and_exec(ProgramOptions *options) {
                 cout << endl << OK_MSG;
             }
         } else {
-            return handle_curd(options);
+            handle_curd();
+            return;
         }
     }
-
-    return 0;
 }
 
 /**
  * Print data
  * @param data data
  * @param select select nodes
- * @param print_title print title or not
- * @param print_line_no print line number or not
  */
-void print_data(Result *data, Vector<SelectNode> *select, bool print_title, bool print_line_no) {
+void print_data(Result *data, Vector<SelectNode> *select) {
     // column width
     var cw = Vector<int>();
     for (val &row: *data) {
@@ -348,9 +303,9 @@ void print_data(Result *data, Vector<SelectNode> *select, bool print_title, bool
         }
     }
 
-    if (print_title) {
+    if (options->title) {
         // title
-        if (print_line_no) {
+        if (options->line_no) {
             cout << "| " << setw(NO_LEN) << std::right << setfill(' ') << "  No ";
         }
         var coli = 1;
@@ -364,7 +319,7 @@ void print_data(Result *data, Vector<SelectNode> *select, bool print_title, bool
 
         // dashes line
         val size = select->size();
-        if (print_line_no) {
+        if (options->line_no) {
             cout << "|-" << setw(NO_LEN) << std::right << setfill('-') << "";
         }
         for (var i = 0; i < size; i++) {
@@ -375,7 +330,7 @@ void print_data(Result *data, Vector<SelectNode> *select, bool print_title, bool
 
     var line_no = 1;
     for (val &row: *data) {
-        if (print_line_no) {
+        if (options->line_no) {
             cout << "| " << setw(NO_LEN) << std::left << setfill(' ') << line_no++;
         }
 
@@ -385,3 +340,5 @@ void print_data(Result *data, Vector<SelectNode> *select, bool print_title, bool
         cout << " |" << endl;
     }
 }
+
+ProgramOptions *options;

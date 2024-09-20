@@ -2,7 +2,9 @@
 // Created by tika on 24-8-14.
 //
 
-#include "parse.h"
+#include "util.h"
+#include "funcs.h"
+#include "parser.h"
 
 bool ASTNode::tableless() const {
     if (atype == A_COLUMN) {
@@ -1427,34 +1429,27 @@ static SelectStatement *parse_with() {
  * parse SELECT statements separated by semicolon
  * @return vector of SELECT statements
  */
-static Vector<SelectStatement *> *parse() {
-    SelectStatement *stmt;
-    Token *start;
-    val queries = new Vector<SelectStatement *>();
-    while ((start = pop(true))) {
-        if (start->type == T_SELECT) {
-            stmt = parse_select_stmt("");
-        } else if (start->type == T_WITH) {
-            stmt = parse_with();
-        } else {
-            show_error("Expected 'select' or 'with' but got " + start->text);
-        }
-        match(T_SEMICOLON, "semicolon at the end of sql statement");
-
-        queries->push_back(stmt);
-    }
-
-    return queries;
-}
-
-/**
- * parse SQL statements from tokens
- * @param tokens tokens
- * @return vector of SQL statements
- */
-Vector<SelectStatement *> *parse(Vector<Token *> *tokens, int col_count) {
+Statement parse_read(Vector<Token *> *tokens, int col_count) {
     TOKENS = tokens;
     COL_NUM = col_count;
     init_std();
-    return parse();
+
+    SelectStatement *stmt;
+
+    var tk = pop();
+    if (tk->type == T_SELECT) {
+        stmt = parse_select_stmt("");
+    } else if (tk->type == T_WITH) {
+        stmt = parse_with();
+    }
+
+    if ((tk = peek(true)) && tk->type == T_SEMICOLON) {
+        pop();
+    }
+
+    if (INDEX < TOKENS->size()) {
+        show_error("Unexpected token after SELECT statement");
+    }
+
+    return Statement{S_SELECT, stmt};
 }

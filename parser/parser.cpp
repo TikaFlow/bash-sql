@@ -9,15 +9,28 @@
  * @param sql the sql to be parsed
  * @return AST tree
  */
-Vector<SelectStatement *> *parse_sql(const String &sql, int col_count) {
-    if (sql.empty()) {
-        return null;
-    }
-    val tokens = lex(sql);
+Statement parse(Vector<Token *> *tokens) {
     // DEBUG
     // for (val &token: *tokens) {
     //     std::cout << token->type << " " << token->text << std::endl;
     // }
     // DEBUG END
-    return parse(tokens, col_count);
+    Statement stmt{};
+
+    val start = tokens->at(0);
+    switch (start->type) {
+        case T_WITH:
+        case T_SELECT:
+            stmt = parse_read(tokens, options->columns);
+            break;
+        default:
+            show_error("Unknown SQL statement");
+    }
+
+    for (var &token: *tokens) {
+        delete token;
+    }
+    delete tokens;
+
+    return stmt; // make compiler happy
 }

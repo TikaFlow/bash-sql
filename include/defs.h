@@ -7,22 +7,6 @@
 
 #include "global.h"
 
-/**
- * select statement
- * @note writing order: with -> select -> from -> where -> group -> order -> limit
- * @note execution order: with -> from -> where -> group -> select -> order -> limit
- */
-typedef struct SelectStatement SelectStatement;
-typedef struct WithNode WithNode;
-typedef struct SelectNode SelectNode;
-typedef struct OrderNode OrderNode;
-typedef struct LimitNode LimitNode;
-typedef struct Token Token;
-typedef struct Param Param;
-typedef struct Column Column;
-typedef struct ASTNode ASTNode;
-typedef struct Cell Cell;
-
 typedef enum {
     T_EOF,
     T_PLUS, T_MINUS, T_STAR, T_SLASH,
@@ -33,6 +17,12 @@ typedef enum {
     T_GROUP, T_BY, T_ORDER, T_ASC, T_DESC, T_IN, T_OFFSET, T_LIMIT,
     T_AND, T_OR, T_NOT, T_LIKE, T_IS, T_NULL, T_WITH,
 } TokenType;
+
+typedef enum {
+    S_NONE,
+    S_SELECT, S_INSERT, S_UPDATE, S_DELETE, // DML
+    S_CREATE, S_DROP, S_SHOW, S_DESCRIBE, S_USE, // DDL
+} StatementType;
 
 typedef enum {
     D_NONE, // no type, or to be determined
@@ -57,6 +47,8 @@ struct Token {
     // for T_STRING or T_IDENTIFIER, its name; for other, its description
     // so that text will never be NULL
     String text;
+
+    String to_string() const;
 };
 
 struct ASTNode {
@@ -97,6 +89,7 @@ struct Cell {
     String to_string() const;
 };
 
+struct SelectStatement;
 struct WithNode {
     SelectStatement *stmt;
     String as;
@@ -117,6 +110,11 @@ struct LimitNode {
     int count;
 };
 
+/**
+ * select statement
+ * @note writing order: with -> select -> from -> where -> group -> order -> limit
+ * @note execution order: with -> from -> where -> group -> select -> order -> limit
+ */
 struct SelectStatement {
     Vector<WithNode> *with;
     Vector<SelectNode> *select;
@@ -140,6 +138,23 @@ struct SelectStatement {
     bool tableless() const;
 };
 
+struct Statement {
+    StatementType type;
+    union {
+        SelectStatement *stmt_r;
+    };
+};
+
+struct ProgramOptions {
+    bool title;
+    bool line_no;
+    bool interactive;
+    String data;
+    char delimiter;
+    int columns;
+    String sql;
+};
+
 using Row = Vector<Cell *>;
 using Result = Vector<Row *>;
 // column type, column index in the table(0-indexed), -1 if ambiguous
@@ -147,5 +162,7 @@ using ColumnDesc = Pair<DataType, int>;
 // column name, columns type
 using Table = Vector<Pair<String, DataType>>;
 using TableSet = Map<String, ColumnDesc>;
+
+extern ProgramOptions *options;
 
 #endif //BASH_SQL_DEFS_H
