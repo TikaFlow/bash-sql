@@ -30,7 +30,9 @@ struct Function {
 
 extern Map<String, Function> FUNCTIONS;
 
-void wrong_arg_nums(const String &func_name);
+void check_arg_nums(Row *row, const String &func_name, int min, int max = -1);
+
+void check_number(Row *row, const String &func_name, int index);
 
 void init_type_funcs();
 

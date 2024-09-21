@@ -4,20 +4,6 @@
 
 #include "process.h"
 
-String Cell::to_string() const {
-    switch (type) {
-        case D_BOOL:
-            return number == 0 ? "false" : "true";
-        case D_INTEGER:
-        case D_REAL:
-            return cut_tail(::to_string(number));
-        case D_STRING:
-            return text;
-        default:
-            return ""; // make compiler happy
-    }
-}
-
 static Cell *evaluate(Result *data, ASTNode *exp);
 
 /**

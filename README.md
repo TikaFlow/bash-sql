@@ -231,17 +231,17 @@ from std where col2 not like 'PID';"
 
 ### system
 
-- [app_name](#app_name) 🟢
+- [app](#app) 🟢
 - [author](#author) 🟢
 - [version](#version) 🟢
 
 ### misc
 
-- [coalese](#coalesce) 🟡
+- [coalese](#coalesce) 🟢
 - [greatest](#greatest) 🟢
-- [isnull](#isnull) 🟡
+- [isnull](#isnull) 🟢
 - [least](#least) 🟢
-- [sleep](#sleep) 🟡
+- [sleep](#sleep) 🟢
 
 ## Function description
 
@@ -259,9 +259,9 @@ Returns the absolute value of `X`, or NULL if `X` is NULL.
 Returns the arc cosine of `X`, that is, the value whose cosine is `X`.
 Returns NULL if `X` is not in the range -1 to 1, or if `X` is NULL.
 
-### app_name
+### app
 
-> prototype: app_name()
+> prototype: app()
 
 Returns the application name.
 
@@ -296,6 +296,12 @@ ceil() is a synonym for `CEILING()`.
 > prototype: ceiling(`x`)
 
 Returns the smallest integer value not less than `X`. Returns NULL if `X` is NULL.
+
+### coalesce
+
+> prototype: coalesce(`expr1`, `expr2`, ...)
+
+Returns the first non-NULL value in the list, or NULL if there are no non-NULL values.
 
 ### concat
 
@@ -358,6 +364,12 @@ Returns NULL if any argument is NULL.
 > prototype: hex(`n` or `s`)
 
 This function can be used to obtain a hexadecimal representation of a decimal number or a string.
+
+### isnull
+
+> prototype: isnull(`expr`)
+
+If `expr` is NULL, ISNULL() returns `true`, otherwise it returns `false`.
 
 ### least
 
@@ -428,8 +440,7 @@ Modulo operation. Returns the remainder of `N` divided by `M`. Returns NULL if `
 
 > prototype: pi()
 
-Returns the value of `π`(pi). The default number of decimal places displayed is 8,
-but uses the full double-precision value internally.
+Returns the value of `π`(pi).
 
 ### pow
 
@@ -480,6 +491,15 @@ Returns NULL if `X` is NULL.
 > prototype: sin(`x`)
 
 Returns the sine of `X`, where `X` is given in radians. Returns NULL if `X` is NULL.
+
+### sleep
+
+> prototype: sleep(`milliseconds`)
+
+Sleep(pauses) for the specified number of milliseconds. Returns 0.
+
+Note that since the program is single-threaded, the sleep function will
+execute multiple times if there are multiple lines.
 
 ### sqrt
 

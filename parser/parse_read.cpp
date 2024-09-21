@@ -6,46 +6,6 @@
 #include "funcs.h"
 #include "parser.h"
 
-bool ASTNode::tableless() const {
-    if (atype == A_COLUMN) {
-        return false;
-    }
-
-    if (left) {
-        if (!left->tableless()) {
-            return false;
-        }
-    }
-
-    if (right) {
-        if (!right->tableless()) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-bool SelectStatement::tableless_with() const {
-    if (!with) {
-        return true;
-    }
-
-    return all_of(with->begin(), with->end(), [](WithNode &node) { return node.stmt->tableless(); });
-}
-
-bool SelectStatement::tableless_select() const {
-    if (!select) {
-        return true;
-    }
-
-    return all_of(select->begin(), select->end(), [](SelectNode &node) { return node.col->tableless(); });
-}
-
-bool SelectStatement::tableless() const {
-    return tableless_with() && tableless_select();
-}
-
 // next token index to be process
 static int INDEX = 0;
 // token vector from lexer
@@ -110,7 +70,7 @@ static Token *match(TokenType type, const String &what) {
     if (token && token->type == type) {
         return token;
     } else {
-        show_error("Expected " + what + " but got " + (token ? token->text : "nothing"));
+        show_error("Expected " + what + " but got " + (token ? (token->to_string()) : "nothing"));
     }
     return null; // make compiler happy
 }
@@ -286,15 +246,20 @@ static ASTNode *primary() {
 
     var tk = pop();
     switch (tk->type) {
-        case T_INTEGER:
-            node = new ASTNode(A_LITERAL, D_INTEGER, null, null, tk->integer);
-            break;
-        case T_REAL:
-            node = new ASTNode(A_LITERAL, D_REAL, null, null, tk->real);
-            break;
         case T_TRUE:
         case T_FALSE:
             node = new ASTNode(A_LITERAL, D_BOOL, null, null, tk->type == T_TRUE);
+            break;
+        case T_INTEGER:
+            node = new ASTNode(A_LITERAL, D_INTEGER, null, null, tk->integer);
+            break;
+        case T_NULL:
+            // BOOL type can't be null, integer can convert to real/string
+            // that means, this 'NULL' can be converted to any type except BOOL
+            node = new ASTNode(A_LITERAL, D_INTEGER, null, null, NONE);
+            break;
+        case T_REAL:
+            node = new ASTNode(A_LITERAL, D_REAL, null, null, tk->real);
             break;
         case T_STRING:
             node = new ASTNode(A_LITERAL, D_STRING, null, null, tk->text);
@@ -312,7 +277,7 @@ static ASTNode *primary() {
             match(T_RPAREN, "close parenthesis");
             break;
         default:
-            show_error("Expected primary expression but got '" + tk->text + "'");
+            show_error("Expected primary expression but got " + tk->to_string());
             break;
     }
 
@@ -1293,7 +1258,7 @@ static Vector<OrderNode> *parse_order_by(Vector<SelectNode> *stmt) {
         } else if (token->type == T_IDENTIFIER) {
             order = parse_order_col(token->text);
         } else {
-            show_error("Expected column name or index but got " + token->text);
+            show_error("Expected column name or index but got " + token->to_string());
         }
 
         asc = true;

@@ -4,17 +4,6 @@
 
 #include "lexer.h"
 
-String Token::to_string() const {
-    switch (this->type) {
-        case T_INTEGER:
-            return ::to_string(this->integer);
-        case T_REAL:
-            return ::to_string(this->real);
-        default:
-            return this->text;
-    }
-}
-
 static int INDEX = 0;
 static Map<String, TokenType> KEYWORD;
 static Map<TokenType, String> DESC;

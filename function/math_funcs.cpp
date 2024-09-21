@@ -7,23 +7,6 @@
 #include "funcs.h"
 
 /**
- * check if the argument at index is a number
- * @param row params
- * @param name function name
- * @param index index of the argument, starting from 1
- */
-static void check_number(Row *row, const String &name, int index) {
-    if (row->size() < index) {
-        wrong_arg_nums(name);
-    }
-
-    val cell = row->at(index - 1);
-    if (cell->type != D_INTEGER && cell->type != D_REAL) {
-        show_error(name + ": argument at index " + to_string(index) + " must be a number");
-    }
-}
-
-/**
  * execute a math function with 1 argument
  * @param row params
  * @param name who calls this function
@@ -63,6 +46,7 @@ math2(Row *row, const String &name, double(*func)(double, double), Cell *first =
       bool(*condition)(double, double) = null, DataType type = D_NONE) {
     Cell *left, *right;
 
+    check_arg_nums(row, name, 1, 2);
     check_number(row, name, 1);
     if ((first || second) && row->size() == 1) {
         if (first) {
@@ -76,8 +60,6 @@ math2(Row *row, const String &name, double(*func)(double, double), Cell *first =
         check_number(row, name, 2);
         left = row->at(0);
         right = row->at(1);
-    } else {
-        wrong_arg_nums(name);
     }
 
     if (type == D_NONE) {
@@ -171,9 +153,7 @@ static Cell *tk_mod(Row *row) {
 }
 
 static Cell *tk_pi(Row *row) {
-    if (!row->empty()) {
-        wrong_arg_nums("pi");
-    }
+    check_arg_nums(row, "pi", 0);
 
     return new Cell(D_REAL, M_PI);
 }
@@ -191,6 +171,8 @@ static Cell *tk_radians(Row *row) {
 }
 
 static Cell *tk_rand(Row *row) {
+    check_arg_nums(row, "rand", 0, 1);
+
     static var seeds = Map<double, double>();
     static std::random_device rd;
     static std::mt19937 gen(rd());
@@ -198,28 +180,22 @@ static Cell *tk_rand(Row *row) {
 
     if (row->empty()) {
         return new Cell(D_REAL, dis(gen));
-    } else if (row->size() == 1) {
-        val seed = row->at(0);
-        if (seed->type != D_INTEGER && seed->type != D_REAL) {
-            show_error("rand: seed must be a number");
-        }
-
-        if (seed->text == NONE) {
-            return new Cell(D_REAL);
-        }
-
-        if (seeds.count(seed->number)) {
-            return new Cell(D_REAL, seeds.at(seed->number));
-        } else {
-            val rand = dis(gen);
-            seeds.insert({seed->number, rand});
-            return new Cell(D_REAL, rand);
-        }
-    } else {
-        wrong_arg_nums("rand");
     }
 
-    return null; // make compiler happy
+    val seed = row->at(0);
+    check_number(row, "rand", 1);
+
+    if (seed->text == NONE) {
+        return new Cell(D_REAL);
+    }
+
+    if (seeds.count(seed->number)) {
+        return new Cell(D_REAL, seeds.at(seed->number));
+    } else {
+        val rand = dis(gen);
+        seeds.insert({seed->number, rand});
+        return new Cell(D_REAL, rand);
+    }
 }
 
 static Cell *tk_round(Row *row) {

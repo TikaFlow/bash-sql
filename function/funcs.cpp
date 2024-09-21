@@ -6,8 +6,39 @@
 
 Map<String, Function> FUNCTIONS;
 
-void wrong_arg_nums(const String &func_name) {
+/**
+ * show error when argument number is wrong at function name
+ * @param func_name function name
+ */
+static void wrong_arg_nums(const String &func_name) {
     show_error(func_name + ": wrong number of arguments");
+}
+
+void check_arg_nums(Row *row, const String &func_name, int min, int max) {
+    if (max == -1) {
+        max = min;
+    }
+
+    if (row->size() < min || row->size() > max) {
+        wrong_arg_nums(func_name);
+    }
+}
+
+/**
+ * check if the argument at index is a number
+ * @param row params
+ * @param func_name function func_name
+ * @param index index of the argument, starting from 1
+ */
+void check_number(Row *row, const String &func_name, int index) {
+    if (row->size() < index) {
+        wrong_arg_nums(func_name);
+    }
+
+    val cell = row->at(index - 1);
+    if (cell->type != D_INTEGER && cell->type != D_REAL) {
+        show_error(func_name + ": argument at index " + to_string(index) + " must be a number");
+    }
 }
 
 void init_funcs() {

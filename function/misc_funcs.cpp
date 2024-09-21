@@ -2,6 +2,7 @@
 // Created by tika on 24-9-17.
 //
 
+#include <thread>
 #include "funcs.h"
 
 /**
@@ -65,15 +66,58 @@ static Cell *cell_compare(Row *row, const String &name) {
     return res;
 }
 
+static Cell *tk_coalesce(Row *row) {
+    for (val &cell: *row) {
+        if (cell->type == D_STRING) {
+            if (cell->text.empty()) {
+                continue;
+            }
+        } else {
+            if (cell->text == NONE) {
+                continue;
+            }
+        }
+        return new Cell(*cell);
+    }
+
+    return new Cell(NONE);
+}
+
 static Cell *tk_greatest(Row *row) {
     return cell_compare(row, "greatest");
+}
+
+static Cell *tk_isnull(Row *row) {
+    check_arg_nums(row, "isnull", 1);
+
+    val cell = row->at(0);
+    if (cell->type == D_STRING) {
+        return new Cell(D_BOOL, cell->text.empty());
+    } else {
+        return new Cell(D_BOOL, cell->text == NONE);
+    }
 }
 
 static Cell *tk_least(Row *row) {
     return cell_compare(row, "least");
 }
 
+static Cell *tk_sleep(Row *row) {
+    check_arg_nums(row, "sleep", 1);
+    check_number(row, "sleep", 1);
+
+    val sleep_time = (int) row->at(0)->number;
+    if (sleep_time > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
+    }
+
+    return new Cell(D_INTEGER, 0);
+}
+
 void init_misc_funcs() {
+    ADD_NORMAL(coalesce, D_STRING);
     ADD_NORMAL(greatest, D_STRING);
+    ADD_NORMAL(isnull, D_BOOL);
     ADD_NORMAL(least, D_STRING);
+    ADD_NORMAL(sleep, D_INTEGER);
 }
