@@ -4,18 +4,49 @@
 
 #include "funcs.h"
 
-static Cell *tk_concat(Row *row) {
-    var str = String();
+#define PARAM_MAX 999999
 
-    for (val &cell: *row) {
-        if ((cell->type == D_STRING && cell->text.empty())
-            || (cell->type != D_STRING && cell->text == NONE)) {
+Cell *concat_aux(Row *row, const String &func_name, const String &sep = "", int start = 0);
+
+/**
+ * aux function for concat/concat_ws/group_concat
+ * @param row params
+ * @param func_name who called this function
+ * @param sep separator
+ * @param start start index
+ * @return concatenated string cell
+ */
+Cell *concat_aux(Row *row, const String &func_name, const String &sep, int start) {
+    check_arg_nums(row, func_name, start + 1, PARAM_MAX);
+
+    var str = String();
+    for (int i = start; i < row->size(); ++i) {
+        val cell = row->at(i);
+        if (check_null(cell)) {
             return new Cell(D_STRING);
         }
         str += cell->to_string();
+
+        if (i == row->size() - 1) {
+            break;
+        }
+        str += sep;
     }
 
     return new Cell(str);
+}
+
+static Cell *tk_concat(Row *row) {
+    return concat_aux(row, "concat");
+}
+
+static Cell *tk_concat_ws(Row *row) {
+    val sep = row->at(0)->to_string();
+    if (sep == NONE) {
+        return new Cell(D_STRING);
+    }
+
+    return concat_aux(row, "concat_ws", sep, 1);
 }
 
 static Cell *tk_hex(Row *row) {
@@ -42,5 +73,6 @@ static Cell *tk_hex(Row *row) {
 
 void init_string_funcs() {
     ADD_NORMAL(concat, D_STRING);
+    ADD_NORMAL(concat_ws, D_STRING);
     ADD_NORMAL(hex, D_STRING);
 }

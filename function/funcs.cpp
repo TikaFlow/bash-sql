@@ -25,6 +25,32 @@ void check_arg_nums(Row *row, const String &func_name, int min, int max) {
 }
 
 /**
+ * check if cell is null
+ * @param cell
+ * @return
+ */
+bool check_null(Cell *cell) {
+    // cell won't be null
+    if (cell->type == D_STRING) {
+        return cell->text.empty();
+    } else {
+        // D_BOOL won't be null, so always return false
+        return cell->text == NONE;
+    }
+}
+
+/**
+ * check if the argument cell is a number
+ * @param cell param cell
+ * @param func_name function func_name
+ */
+void check_number(Cell *cell, const String &func_name) {
+    if (cell->type != D_INTEGER && cell->type != D_REAL) {
+        show_error(func_name + ": type error, expected a number");
+    }
+}
+
+/**
  * check if the argument at index is a number
  * @param row params
  * @param func_name function func_name

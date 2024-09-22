@@ -223,6 +223,12 @@ static ASTNode *function_call(const String &name) {
         show_error("Unknown function: '" + func + "'");
     }
 
+    if (func == "group_concat") { // group_concat has a 'concat' function inside
+        val concat = function_call("concat");
+        left = new ASTNode(A_PARAM, D_NONE, left, concat);
+        return new ASTNode(A_FUNC_CALL, FUNCTIONS.at(func).dtype, left, null, func);
+    }
+
     pop(); // pop "("
     if (peek()->type != T_RPAREN) {
         do {
@@ -977,6 +983,24 @@ static void validate_where(TableSet *from, ASTNode *where) {
 }
 
 /**
+ * erase the column from the map, the col node has been checked
+ * @param columns columns map
+ * @param col column node
+ */
+static void erase_column(Map<double, String> *columns, ASTNode *col) {
+    if (!col) {
+        return;
+    }
+
+    if (col->atype == A_COLUMN) {
+        columns->erase(col->number);
+    }
+
+    erase_column(columns, col->left);
+    erase_column(columns, col->right);
+}
+
+/**
  * check if the group by columns are valid
  * @param from FROM table
  * @param select SELECT clause
@@ -1031,20 +1055,12 @@ static void validate_group_by(TableSet *from, Vector<SelectNode> *select, Vector
         }
 
         val has_agg = has_aggregate(col);
-        if (has_agg) {
-            var who = col;
-            if (outside_agg(col, group, who)) {
-                show_error("Column outside aggregate function must be in group by clause: " + who->text);
-            }
-        } else {
-            if (col->atype != A_COLUMN
-                || none_of(group->begin(), group->end(), [&](ASTNode *gnode) {
-                return gnode->number == col->number;
-            })) {
-                show_error("Column without aggregate function must be in group by clause: " + col->text);
-            }
-
-            columns.erase(col->number);
+        var who = col;
+        if (outside_agg(col, group, who)) {
+            show_error("Column outside aggregate function must be in group by clause: " + who->text);
+        }
+        if (!has_agg) {
+            erase_column(&columns, col);
         }
     }
 

@@ -20,7 +20,7 @@ math1(Row *row, const String &name, double(*func)(double), DataType type = D_NON
     check_number(row, name, 1);
 
     val cell = row->at(0);
-    if (cell->text == NONE || (condition && !condition(cell->number))) {
+    if (check_null(cell) || (condition && !condition(cell->number))) {
         return new Cell(cell->type);
     }
 
@@ -66,7 +66,7 @@ math2(Row *row, const String &name, double(*func)(double, double), Cell *first =
         type = (left->type == D_REAL || right->type == D_REAL) ? D_REAL : D_INTEGER;
     }
 
-    if (left->text == NONE || right->text == NONE || (condition && !condition(left->number, right->number))) {
+    if (check_null(left) || check_null(right) || (condition && !condition(left->number, right->number))) {
         return new Cell(type);
     }
 
@@ -110,6 +110,59 @@ static Cell *tk_ceil(Row *row) {
 
 static Cell *tk_ceiling(Row *row) {
     return math1(row, "ceiling", ceil, D_INTEGER);
+}
+
+static Cell *tk_conv(Row *row) {
+    check_arg_nums(row, "conv", 3);
+    val min_base = 2, max_base = 36;
+
+    val num = row->at(0);
+    check_number(row, "conv", 2);
+    check_number(row, "conv", 3);
+    val from = row->at(1);
+    val to = row->at(2);
+    if (check_null(num) || check_null(from) || check_null(to)) {
+        return new Cell(D_STRING);
+    }
+    if (num->type != D_INTEGER && (num->type != D_STRING || num->text.empty())) {
+        show_error("conv: number to convert must be an integer or a string");
+    }
+    if (from->type != D_INTEGER || to->type != D_INTEGER) {
+        show_error("conv: from_base and to_base must be integers");
+    }
+    if (from->number < min_base || from->number > max_base || to->number < min_base || to->number > max_base) {
+        show_error("conv: from_base and to_base must be between 2 and 36");
+    }
+
+    var from_base = (int) from->number;
+    val to_base = (int) to->number;
+    var number = 0;
+    if (num->type == D_INTEGER) {
+        if (from_base != 10) {
+            show_warn("conv: given a decimal number, but from_base is not 10");
+            from_base = 10;
+        }
+        number = (int) num->number;
+    } else {
+        // convert number as from_base
+        char *endptr;
+        number = (int) strtol(num->text.c_str(), &endptr, from_base);
+        if (endptr == num->text.c_str() || *endptr != '\0') {
+            return new Cell(D_STRING);
+        }
+    }
+    var str = String();
+    do {
+        val rem = number % to_base;
+        if (rem >= 0 && rem <= 9) {
+            str = (char) (rem + '0') + str;
+        } else {
+            str = (char) (rem - 10 + 'A') + str;
+        }
+        number /= to_base;
+    } while (number > 0);
+
+    return new Cell(str);
 }
 
 static Cell *tk_cos(Row *row) {
@@ -185,7 +238,7 @@ static Cell *tk_rand(Row *row) {
     val seed = row->at(0);
     check_number(row, "rand", 1);
 
-    if (seed->text == NONE) {
+    if (check_null(seed)) {
         return new Cell(D_REAL);
     }
 
@@ -233,6 +286,7 @@ void init_math_funcs() {
     ADD_NORMAL(atan, D_REAL);
     ADD_NORMAL(ceil, D_INTEGER);
     ADD_NORMAL(ceiling, D_INTEGER);
+    ADD_NORMAL(conv, D_STRING);
     ADD_NORMAL(cos, D_REAL);
     ADD_NORMAL(cot, D_REAL);
     ADD_NORMAL(degrees, D_REAL);

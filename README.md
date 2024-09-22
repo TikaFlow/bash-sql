@@ -108,7 +108,7 @@ from std where col2 not like 'PID';"
 - [atan](#atan) 🟢
 - [ceil](#ceil) 🟢
 - [ceiling](#ceiling) 🟢
-- [conv](#conv) 🟡
+- [conv](#conv) 🟢
 - [cos](#cos) 🟢
 - [cot](#cot) 🟢
 - [degrees](#degrees) 🟢
@@ -222,11 +222,11 @@ from std where col2 not like 'PID';"
 
 ### aggregate
 
-- [avg](#avg) 🟡
-- [count](#count) 🟡
-- [group_concat](#group_concat) 🟡
-- [max](#max) 🟡
-- [min](#min) 🟡
+- [avg](#avg) 🟢
+- [count](#count) 🟢
+- [group_concat](#group_concat) 🟢
+- [max](#max) 🟢
+- [min](#min) 🟢
 - [sum](#sum) 🟢
 
 ### system
@@ -285,6 +285,12 @@ Returns NULL if `X` is NULL.
 
 Returns the author of the application.
 
+### avg
+
+> prototype: avg(`expr`)
+
+Returns the average value of `expr`(skip NULL value). If all `expr`s are NULL, returns NULL.
+
 ### ceil
 
 > prototype: ceil(`x`)
@@ -311,6 +317,29 @@ Returns the string that results from concatenating the arguments. May have one o
 
 Returns NULL if any argument is NULL.
 
+### concat_ws
+
+> prototype: concat_ws(`sep`, `str1`, `str2`, ...)
+
+Concatenate with separator and is a special form of CONCAT().
+The first argument is the separator for the rest of  the arguments.
+
+The separator is added between the strings to be concatenated.
+The separator can be a string, as can the rest of the arguments.
+If the separator is NULL, the result is NULL.
+
+### conv
+
+> prototype: conv(`n`, `from_base`, `to_base`)
+
+Returns a string representation of the number `N`, converted from base `from_base` to base `to_base`.
+
+Returns NULL if any argument is NULL or `N` is a invalid number.
+
+The argument `N` is interpreted as an integer, but may be specified as an integer or a string.
+
+The minimum base is 2 and the maximum base is 36.
+
 ### cos
 
 > prototype: cos(`x`)
@@ -322,6 +351,12 @@ Returns the cosine of `X`, where `X` is given in radians. Returns NULL if `X` is
 > prototype: cot(`x`)
 
 Returns the cotangent of `X`. Returns NULL if `X` is NULL.
+
+### count
+
+> prototype: count(`expr`)
+
+Returns a count of the number of non-NULL values of `expr` in the rows.
 
 ### degrees
 
@@ -358,6 +393,13 @@ The arguments are compared using the same rules as for `LEAST()`.
 - If all arguments are integer-valued, the result is an integer.
 
 Returns NULL if any argument is NULL.
+
+### group_concat
+
+> prototype: group_concat(`expr`)
+
+Returns a string result with the concatenated non-NULL values from a group.
+It returns NULL if there are no non-NULL values.
 
 ### hex
 
@@ -427,6 +469,20 @@ Returns the base-10 logarithm of `X`. If `X` is less than or equal to 0, returns
 Returns NULL if `X` is NULL.
 
 `LOG10`(`X`) is equivalent to `LOG`(10, `X`).
+
+### max
+
+> prototype: max(`expr`)
+
+Returns the maximum value of `expr`.
+MAX() may take a string argument; in such cases, it returns the maximum string value.
+
+### min
+
+> prototype: min(`expr`)
+
+Returns the minimum value of `expr`.
+MIN() may take a string argument; in such cases, it returns the minimum string value.
 
 ### mod
 
@@ -511,7 +567,7 @@ Returns the square root of a non-negative number `X`. If `X` is NULL, the functi
 
 > prototype: sum(`expr`)
 
-Returns the sum of `expr`(skip NULL value). If any expr is not a number, or all expr are NULL, returns NULL.
+Returns the sum of `expr`(skip NULL value). If all `expr`s are NULL, returns NULL.
 
 ### tan
 

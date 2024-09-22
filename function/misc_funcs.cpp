@@ -11,7 +11,7 @@
  * @param name function name
  * @return result
  */
-static Cell *cell_compare(Row *row, const String &name) {
+Cell *cell_compare(Row *row, const String &name) {
     if (row->empty()) {
         return new Cell(D_INTEGER);
     }
@@ -68,14 +68,8 @@ static Cell *cell_compare(Row *row, const String &name) {
 
 static Cell *tk_coalesce(Row *row) {
     for (val &cell: *row) {
-        if (cell->type == D_STRING) {
-            if (cell->text.empty()) {
-                continue;
-            }
-        } else {
-            if (cell->text == NONE) {
-                continue;
-            }
+        if (check_null(cell)) {
+            continue;
         }
         return new Cell(*cell);
     }
@@ -91,11 +85,7 @@ static Cell *tk_isnull(Row *row) {
     check_arg_nums(row, "isnull", 1);
 
     val cell = row->at(0);
-    if (cell->type == D_STRING) {
-        return new Cell(D_BOOL, cell->text.empty());
-    } else {
-        return new Cell(D_BOOL, cell->text == NONE);
-    }
+    return new Cell(D_BOOL, check_null(cell));
 }
 
 static Cell *tk_least(Row *row) {
