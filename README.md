@@ -89,16 +89,17 @@ from std where col2 not like 'PID';"
 
 ### type conversion
 
-- [int](#int) 🟡
-- [double](#double) 🟡
-- [string](#string) 🟡
+- [int](#int) 🟢
+- [double](#double) 🟢
+- [string](#string) 🟢
 
 ### flow control
 
-- [case](#case) 🟡
-- [if](#if) 🟡
-- [ifnull](#ifnull) 🟡
-- [nullif](#nullif) 🟡
+- [case](#case) 🟢
+- [decode](#decode) 🟢
+- [if](#if) 🟢
+- [ifnull](#ifnull) 🟢
+- [nullif](#nullif) 🟢
 
 ### mathematical
 
@@ -176,13 +177,13 @@ from std where col2 not like 'PID';"
 - [year](#year) 🟡
 - [yearweek](#yearweek) 🟡
 
-### string
+### strings
 
 - [ascii](#ascii) 🟡
 - [binary](#binary) 🟡
 - [char](#char) 🟡
 - [concat](#concat) 🟢
-- [concat_ws](#concat_ws) 🟡
+- [concat_ws](#concat_ws) 🟢
 - [etl](#elt) 🟡
 - [field](#field) 🟡
 - [hex](#hex) 🟢
@@ -291,6 +292,16 @@ Returns the author of the application.
 
 Returns the average value of `expr`(skip NULL value). If all `expr`s are NULL, returns NULL.
 
+### case
+
+> prototype: case(`when1`, `then1`, ..., `whenN`, `thenN`, `else`)
+
+If `when1` is true, returns `then1`.
+Otherwise, if `when2` is true, returns `then2`, and so on.
+
+If none of the `when` expressions are true, returns `else`.
+If `else` is omitted, returns NULL.
+
 ### ceil
 
 > prototype: ceil(`x`)
@@ -358,11 +369,27 @@ Returns the cotangent of `X`. Returns NULL if `X` is NULL.
 
 Returns a count of the number of non-NULL values of `expr` in the rows.
 
+### decode
+
+> prototype: decode(`expr`, `value1`, `result1`, `value2`, `result2`, ..., [`default`])
+
+If `expr` equals `value1`, returns `result1`.
+Otherwise, if `expr` equals `value2`, returns `result2`, and so on.
+
+If `expr` matches none of the values, returns `default`.
+If `default` is omitted, returns NULL.
+
 ### degrees
 
 > prototype: degrees(`x`)
 
 Returns the argument `X`, converted from radians to degrees. Returns NULL if `X` is NULL.
+
+### double
+
+> prototype: double(`x`)
+
+Cast `X` to double. Returns 0 if not a valid number.
 
 ### exp
 
@@ -407,11 +434,30 @@ It returns NULL if there are no non-NULL values.
 
 This function can be used to obtain a hexadecimal representation of a decimal number or a string.
 
+### if
+
+> prototype: if(`condition`, `true_value`, `false_value`)
+
+Returns `true_value` if `condition` is true, otherwise returns `false_value`.
+
+### ifnull
+
+> prototype: ifnull(`expr1`, `expr2`)
+
+Returns `expr2` if `expr1` is NULL, otherwise returns `expr1`.
+This is the same as the `COALESCE()` function with two arguments.
+
 ### isnull
 
 > prototype: isnull(`expr`)
 
 If `expr` is NULL, ISNULL() returns `true`, otherwise it returns `false`.
+
+### int
+
+> prototype: int(`x`)
+
+Cast `X` to integer. Returns 0 if not a valid number.
 
 ### least
 
@@ -489,6 +535,13 @@ Modulo operation. Returns the remainder of `N` divided by `M`. Returns NULL if `
 
 `MOD`(`N`, 0) returns NULL.
 
+### nullif
+
+> prototype: nullif(`expr1`, `expr2`)
+
+Returns NULL if `expr1` equals `expr2`; otherwise returns `expr1`.
+This is the same as IF(`expr1` = `expr2`, NULL, `expr1`).
+
 ### pi
 
 > prototype: pi()
@@ -561,6 +614,12 @@ execute multiple times if there are multiple lines.
 > prototype: sqrt(`x`)
 
 Returns the square root of a non-negative number `X`. If `X` is NULL, the function returns NULL.
+
+### string
+
+> prototype: string(`x`)
+
+Cast `X` to string.
 
 ### sum
 

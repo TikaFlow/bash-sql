@@ -4,8 +4,6 @@
 
 #include "funcs.h"
 
-#define PARAM_MAX 999999
-
 Cell *concat_aux(Row *row, const String &func_name, const String &sep = "", int start = 0);
 
 /**

@@ -25,6 +25,53 @@ void check_arg_nums(Row *row, const String &func_name, int min, int max) {
 }
 
 /**
+ * check if cell can be treated as true
+ * @param cell param cell
+ * @return true if can be treated as true, false otherwise
+ */
+bool check_true(Cell *cell) {
+    switch (cell->type) {
+        case D_NULL:
+            return false;
+        case D_BOOL:
+        case D_INTEGER:
+        case D_REAL:
+            return cell->number != 0;
+        case D_STRING:
+            return !cell->text.empty();
+        default:
+            return false;
+    }
+}
+
+/**
+ * check if two cells are equal
+ * @param first first cell
+ * @param second second cell
+ * @return true if equal, false otherwise
+ */
+bool check_equal(Cell *first, Cell *second) {
+    if (first->type != second->type) {
+        return false;
+    }
+
+    switch (first->type) {
+        case D_NULL:
+            return false; // I don't know null is equal to null or not
+        case D_BOOL:
+        case D_INTEGER:
+        case D_REAL:
+            return first->number == second->number;
+        case D_STRING:
+            if (first->text == second->text) {
+                return new Cell();
+            }
+        default:
+            return false;
+    }
+}
+
+/**
  * check if cell is null
  * @param cell
  * @return
