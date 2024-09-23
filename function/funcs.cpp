@@ -30,24 +30,19 @@ void check_arg_nums(Row *row, const String &func_name, int min, int max) {
  * @return
  */
 bool check_null(Cell *cell) {
-    // cell won't be null
-    if (cell->type == D_STRING) {
-        return cell->text.empty();
-    } else {
-        // D_BOOL won't be null, so always return false
-        return cell->text == NONE;
-    }
+    return cell->type == D_NULL;
 }
 
 /**
  * check if the argument cell is a number
  * @param cell param cell
- * @param func_name function func_name
  */
-void check_number(Cell *cell, const String &func_name) {
+bool check_number(Cell *cell) {
     if (cell->type != D_INTEGER && cell->type != D_REAL) {
-        show_error(func_name + ": type error, expected a number");
+        return false;
     }
+
+    return true;
 }
 
 /**
@@ -56,15 +51,13 @@ void check_number(Cell *cell, const String &func_name) {
  * @param func_name function func_name
  * @param index index of the argument, starting from 1
  */
-void check_number(Row *row, const String &func_name, int index) {
+bool check_number(Row *row, const String &func_name, int index) {
     if (row->size() < index) {
         wrong_arg_nums(func_name);
     }
 
     val cell = row->at(index - 1);
-    if (cell->type != D_INTEGER && cell->type != D_REAL) {
-        show_error(func_name + ": argument at index " + to_string(index) + " must be a number");
-    }
+    return check_number(cell);
 }
 
 void init_funcs() {

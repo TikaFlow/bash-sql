@@ -81,6 +81,9 @@ static DataType repair_cell(Cell *cell, DataType target) {
     if (!cell) {
         return D_NONE;
     }
+    if (cell->type == D_NULL) {
+        return D_NULL;
+    }
 
     switch (target) {
         case D_INTEGER:
@@ -122,12 +125,16 @@ static DataType repair_type(Cell *left, Cell *right, ASTType op) {
     val ltype = repair_cell(left, type);
     val rtype = repair_cell(right, type);
 
-    if (op == A_EQ || op == A_NE) {
-        return D_BOOL;
-    }
-
     if (op == A_NEGATE) {
         return ltype;
+    }
+
+    if (ltype == D_NULL || rtype == D_NULL) {
+        return D_NULL;
+    }
+
+    if (op == A_EQ || op == A_NE) {
+        return D_BOOL;
     }
 
     if (ltype == D_REAL || rtype == D_REAL) {
@@ -195,6 +202,9 @@ static Cell *calc_func_call(Result *data, ASTNode *func_node) {
  */
 static void calc_math(Cell *cell, Cell *left, Cell *right, ASTType atype) {
     cell->type = repair_type(left, right, atype);
+    if (cell->type == D_NULL) {
+        return;
+    }
 
     switch (atype) {
         case A_ADD:
@@ -229,11 +239,15 @@ static void calc_logic(Cell *cell, Cell *left, Cell *right, ASTType atype) {
     val cmp = compare_number(left->number, right ? right->number : 0);
     switch (atype) {
         case A_EQ:
-            repair_type(left, right, atype);
+            if (repair_type(left, right, atype) == D_NULL) {
+                break;
+            }
             cell->number = left->text == right->text;
             break;
         case A_NE:
-            repair_type(left, right, atype);
+            if (repair_type(left, right, atype) == D_NULL) {
+                break;
+            }
             cell->number = left->text != right->text;
             break;
         case A_LT:
@@ -258,11 +272,7 @@ static void calc_logic(Cell *cell, Cell *left, Cell *right, ASTType atype) {
             cell->number = left->number == 0;
             break;
         case A_ISNULL:
-            if (left->type == D_STRING) {
-                cell->number = left->text.empty();
-            } else {
-                cell->number = left->text == NONE;
-            }
+            cell->number = left->type == D_NULL;
             break;
         default:
             break; // make compiler happy
@@ -276,6 +286,11 @@ static void calc_logic(Cell *cell, Cell *left, Cell *right, ASTType atype) {
  * @param like like cell
  */
 static void calc_like(Cell *cell, Cell *data, Cell *like) {
+    if (data->type == D_NULL || like->type == D_NULL) {
+        cell->type = D_NULL;
+        return;
+    }
+
     var reg_exp = String("^");
     var esc = false;
     for (char c: like->text) {
@@ -529,7 +544,9 @@ static Result *apply_order_by(Vector<OrderNode> *order, Result *select) {
             val idx = node.index;
             val type = a->at(idx)->type;
 
-            if (type == D_STRING || a->at(idx)->text == NONE) {
+            if (type == D_NULL) {
+                od = 1;
+            } else if (type == D_STRING) {
                 od = a->at(idx)->text.compare(b->at(idx)->text);
             } else {
                 od = compare_number(a->at(idx)->number, b->at(idx)->number);

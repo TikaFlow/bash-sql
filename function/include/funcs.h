@@ -34,9 +34,9 @@ void check_arg_nums(Row *row, const String &func_name, int min, int max = -1);
 
 bool check_null(Cell *cell);
 
-void check_number(Cell *cell, const String &func_name);
+bool check_number(Cell *cell);
 
-void check_number(Row *row, const String &func_name, int index);
+bool check_number(Row *row, const String &func_name, int index);
 
 void init_type_funcs();
 

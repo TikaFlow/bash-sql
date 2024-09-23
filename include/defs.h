@@ -26,7 +26,7 @@ typedef enum {
 
 typedef enum {
     D_NONE, // no type, or to be determined
-    D_STRING, D_BOOL, D_INTEGER, D_REAL,
+    D_NULL, D_STRING, D_BOOL, D_INTEGER, D_REAL,
     D_NUMBER,
 } DataType;
 
@@ -76,13 +76,11 @@ struct Cell {
     double number = 0;
     String text;
 
-    Cell() : type(D_NONE) {};
+    Cell() : type(D_NULL) {};
 
     Cell(const Cell &cell) = default;
 
     Cell(DataType type, double num) : type(type), number(num) {};
-
-    explicit Cell(DataType type) : type(type), text(NONE) {};
 
     explicit Cell(const String &str) : type(D_STRING), text(str) {};
 

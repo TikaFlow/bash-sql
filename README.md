@@ -322,7 +322,7 @@ Returns NULL if any argument is NULL.
 > prototype: concat_ws(`sep`, `str1`, `str2`, ...)
 
 Concatenate with separator and is a special form of CONCAT().
-The first argument is the separator for the rest of  the arguments.
+The first argument is the separator for the rest of the arguments.
 
 The separator is added between the strings to be concatenated.
 The separator can be a string, as can the rest of the arguments.
@@ -439,7 +439,6 @@ The inverse of this function is `EXP()`.
 
 If called with one parameter, this function returns the natural logarithm of `X`.
 If `X` is less than or equal to 0, returns NULL.
-
 Returns NULL if `X` or `B` is NULL.
 
 The inverse of this function (when called with a single argument) is the `EXP()`.
@@ -455,7 +454,6 @@ If `X` is less than or equal to 0, or if `B` is less than or equal to 1, then NU
 > prototype: log2(`x`)
 
 Returns the base-2 logarithm of `X`. If `X` is less than or equal to 0, returns NULL.
-
 Returns NULL if `X` is NULL.
 
 This function is equivalent to the expression `LOG`(`X`) / `LOG`(2).
@@ -465,7 +463,6 @@ This function is equivalent to the expression `LOG`(`X`) / `LOG`(2).
 > prototype: log10(`x`)
 
 Returns the base-10 logarithm of `X`. If `X` is less than or equal to 0, returns NULL.
-
 Returns NULL if `X` is NULL.
 
 `LOG10`(`X`) is equivalent to `LOG`(10, `X`).
@@ -535,6 +532,8 @@ Rounds the argument `X` to `D` decimal places.
 `D` defaults to 0 if not specified.
 `D` can be negative to cause `D` digits left of the decimal point of the value `X` to become zero.
 
+If `X` or `D` is NULL, returns NULL.
+
 ### sign
 
 > prototype: sign(`x`)
@@ -582,6 +581,7 @@ Returns the tangent of `X`, where `X` is given in radians. Returns NULL if `X` i
 Returns the number `X`, truncated to `D` decimal places.
 If `D` is 0, the result has no decimal point or fractional part.
 `D` can be negative to cause `D` digits left of the decimal point of the value `X` to become zero.
+
 If `X` or `D` is NULL, returns NULL.
 
 ### version

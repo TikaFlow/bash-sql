@@ -17,11 +17,11 @@
  */
 static Cell *
 math1(Row *row, const String &name, double(*func)(double), DataType type = D_NONE, bool(*condition)(double) = null) {
-    check_number(row, name, 1);
+    check_arg_nums(row, name, 1);
 
     val cell = row->at(0);
-    if (check_null(cell) || (condition && !condition(cell->number))) {
-        return new Cell(cell->type);
+    if (check_null(cell) || !check_number(cell) || (condition && !condition(cell->number))) {
+        return new Cell();
     }
 
     if (type != D_NONE) {
@@ -47,7 +47,6 @@ math2(Row *row, const String &name, double(*func)(double, double), Cell *first =
     Cell *left, *right;
 
     check_arg_nums(row, name, 1, 2);
-    check_number(row, name, 1);
     if ((first || second) && row->size() == 1) {
         if (first) {
             left = first;
@@ -57,17 +56,18 @@ math2(Row *row, const String &name, double(*func)(double, double), Cell *first =
             right = second;
         }
     } else if (row->size() == 2) {
-        check_number(row, name, 2);
         left = row->at(0);
         right = row->at(1);
     }
 
-    if (type == D_NONE) {
-        type = (left->type == D_REAL || right->type == D_REAL) ? D_REAL : D_INTEGER;
+    if (check_null(left) || check_null(right)
+        || !check_number(left) || !check_number(right)
+        || (condition && !condition(left->number, right->number))) {
+        return new Cell();
     }
 
-    if (check_null(left) || check_null(right) || (condition && !condition(left->number, right->number))) {
-        return new Cell(type);
+    if (type == D_NONE) {
+        type = (left->type == D_REAL || right->type == D_REAL) ? D_REAL : D_INTEGER;
     }
 
     return new Cell(type, func(left->number, right->number));
@@ -117,18 +117,12 @@ static Cell *tk_conv(Row *row) {
     val min_base = 2, max_base = 36;
 
     val num = row->at(0);
-    check_number(row, "conv", 2);
-    check_number(row, "conv", 3);
     val from = row->at(1);
     val to = row->at(2);
-    if (check_null(num) || check_null(from) || check_null(to)) {
-        return new Cell(D_STRING);
-    }
-    if (num->type != D_INTEGER && (num->type != D_STRING || num->text.empty())) {
-        show_error("conv: number to convert must be an integer or a string");
-    }
-    if (from->type != D_INTEGER || to->type != D_INTEGER) {
-        show_error("conv: from_base and to_base must be integers");
+    if (check_null(num) || check_null(from) || check_null(to)
+        || !check_number(from) || !check_number(to)
+        || (num->type != D_INTEGER && (num->type != D_STRING || num->text.empty()))) {
+        return new Cell();
     }
     if (from->number < min_base || from->number > max_base || to->number < min_base || to->number > max_base) {
         show_error("conv: from_base and to_base must be between 2 and 36");
@@ -148,7 +142,7 @@ static Cell *tk_conv(Row *row) {
         char *endptr;
         number = (int) strtol(num->text.c_str(), &endptr, from_base);
         if (endptr == num->text.c_str() || *endptr != '\0') {
-            return new Cell(D_STRING);
+            return new Cell();
         }
     }
     var str = String();
@@ -226,7 +220,7 @@ static Cell *tk_radians(Row *row) {
 static Cell *tk_rand(Row *row) {
     check_arg_nums(row, "rand", 0, 1);
 
-    static var seeds = Map<double, double>();
+    static var seeds = Map<int, double>();
     static std::random_device rd;
     static std::mt19937 gen(rd());
     static std::uniform_real_distribution<> dis(0.0, 1.0);
@@ -236,17 +230,15 @@ static Cell *tk_rand(Row *row) {
     }
 
     val seed = row->at(0);
-    check_number(row, "rand", 1);
-
-    if (check_null(seed)) {
-        return new Cell(D_REAL);
+    if (seed->type != D_INTEGER) {
+        return new Cell();
     }
 
-    if (seeds.count(seed->number)) {
-        return new Cell(D_REAL, seeds.at(seed->number));
+    if (seeds.count((int) seed->number)) {
+        return new Cell(D_REAL, seeds.at((int) seed->number));
     } else {
         val rand = dis(gen);
-        seeds.insert({seed->number, rand});
+        seeds.insert({(int) seed->number, rand});
         return new Cell(D_REAL, rand);
     }
 }

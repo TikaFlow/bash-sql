@@ -61,13 +61,12 @@ bool SelectStatement::tableless() const {
 String Cell::to_string() const {
     std::ostringstream out;
     switch (this->type) {
+        case D_NULL:
+            return NONE;
         case D_BOOL:
             return this->number == 0 ? "false" : "true";
         case D_INTEGER:
         case D_REAL:
-            if (this->text == NONE) {
-                return NONE;
-            }
             out << std::fixed << std::setprecision(PRECISION) << this->number;
             return cut_tail(out.str());
         case D_STRING:

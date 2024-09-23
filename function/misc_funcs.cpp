@@ -13,36 +13,23 @@
  */
 Cell *cell_compare(Row *row, const String &name) {
     if (row->empty()) {
-        return new Cell(D_INTEGER);
+        return new Cell();
     }
 
     var res = new Cell();
     res->type = D_INTEGER;
     for (val &cell: *row) {
-        if (cell->type == D_BOOL) {
-            res->text = NONE;
+        if (check_null(cell) || cell->type == D_BOOL) {
+            res->type = D_NULL;
             break;
         } else if (cell->type == D_STRING) {
-            if (cell->text.empty()) {
-                res->text = NONE;
-                break;
-            }
             res->type = D_STRING;
-        } else {
-            if (cell->text == NONE) {
-                res->text = NONE;
-                break;
-            }
-            if (cell->type == D_REAL) {
-                res->type = D_REAL;
-            }
+        } else if (cell->type == D_REAL) {
+            res->type = D_REAL;
         }
     }
 
-    if (res->text == NONE) {
-        if (res->type == D_STRING) {
-            res->text = "";
-        }
+    if (res->type == D_NULL) {
         return res;
     }
 
@@ -74,7 +61,7 @@ static Cell *tk_coalesce(Row *row) {
         return new Cell(*cell);
     }
 
-    return new Cell(NONE);
+    return new Cell();
 }
 
 static Cell *tk_greatest(Row *row) {
@@ -94,11 +81,16 @@ static Cell *tk_least(Row *row) {
 
 static Cell *tk_sleep(Row *row) {
     check_arg_nums(row, "sleep", 1);
-    check_number(row, "sleep", 1);
 
-    val sleep_time = (int) row->at(0)->number;
-    if (sleep_time > 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
+    val cell = row->at(0);
+    if (!check_null(cell)) {
+        if (!check_number(cell)) {
+            show_error("sleep: incorrect argument type, must be number");
+        }
+        val sleep_time = (int) cell->number;
+        if (sleep_time > 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
+        }
     }
 
     return new Cell(D_INTEGER, 0);

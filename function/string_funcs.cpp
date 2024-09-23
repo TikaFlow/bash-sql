@@ -23,7 +23,7 @@ Cell *concat_aux(Row *row, const String &func_name, const String &sep, int start
     for (int i = start; i < row->size(); ++i) {
         val cell = row->at(i);
         if (check_null(cell)) {
-            return new Cell(D_STRING);
+            return new Cell();
         }
         str += cell->to_string();
 
@@ -41,12 +41,12 @@ static Cell *tk_concat(Row *row) {
 }
 
 static Cell *tk_concat_ws(Row *row) {
-    val sep = row->at(0)->to_string();
-    if (sep == NONE) {
-        return new Cell(D_STRING);
+    val sep = row->at(0);
+    if (sep->type == D_NULL) {
+        return new Cell();
     }
 
-    return concat_aux(row, "concat_ws", sep, 1);
+    return concat_aux(row, "concat_ws", sep->to_string(), 1);
 }
 
 static Cell *tk_hex(Row *row) {

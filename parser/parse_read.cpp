@@ -22,6 +22,8 @@ static Map<String, Schema *> TABLES;
 
 static ASTNode *expression();
 
+static inline void release_node(ASTNode *&node);
+
 /**
  * peek one token
  * @param accept_eof true if return null is accepted
@@ -139,7 +141,7 @@ static DataType repair_type(ASTNode *left, ASTNode *right, ASTType op_type) {
         l_nan = !cast_string(left);
     }
     if (right && right->atype == A_LITERAL && right->dtype == D_STRING) {
-        r_nan = !cast_string(left);
+        r_nan = !cast_string(right);
     }
     val left_type = left->dtype, right_type = right ? right->dtype : D_NONE;
 
@@ -252,17 +254,15 @@ static ASTNode *primary() {
 
     var tk = pop();
     switch (tk->type) {
+        case T_NULL:
+            node = new ASTNode(A_LITERAL, D_NULL, null, null);
+            break;
         case T_TRUE:
         case T_FALSE:
             node = new ASTNode(A_LITERAL, D_BOOL, null, null, tk->type == T_TRUE);
             break;
         case T_INTEGER:
             node = new ASTNode(A_LITERAL, D_INTEGER, null, null, tk->integer);
-            break;
-        case T_NULL:
-            // BOOL type can't be null, integer can convert to real/string
-            // that means, this 'NULL' can be converted to any type except BOOL
-            node = new ASTNode(A_LITERAL, D_INTEGER, null, null, NONE);
             break;
         case T_REAL:
             node = new ASTNode(A_LITERAL, D_REAL, null, null, tk->real);
@@ -382,6 +382,13 @@ static ASTNode *in_list(ASTNode *exp) {
  * @return ast node of the LIKE clause
  */
 static ASTNode *parse_like(ASTNode *exp) {
+    if (peek()->type == T_NULL) {
+        pop();
+        release_node(exp);
+        // nothing like null;
+        return new ASTNode(A_LITERAL, D_BOOL, null, null, false);
+    }
+
     val tk = match(T_STRING, "string literal");
     var value = new ASTNode(A_LITERAL, D_STRING, null, null, tk->text);
 
@@ -588,6 +595,17 @@ static void constant_fold(ASTNode *node) {
     // till now, left and right(if there has) are both literal
 
     var left = node->left, right = node->right;
+
+    if ((left->dtype == D_NULL && node->atype != A_ISNULL)
+        || (right && right->dtype == D_NULL)) {
+        // if NULL, then the result is NULL
+        node->dtype = D_NULL;
+        release_node(node->left);
+        release_node(node->right);
+        node->atype = A_LITERAL;
+        return;
+    }
+
     val cmp = compare_number(left->number, right ? right->number : 0);
     switch (node->atype) { // never be A_LIKE
         /*
@@ -651,8 +669,7 @@ static void constant_fold(ASTNode *node) {
             node->number = left->number == 0;
             break;
         case A_ISNULL:
-            // if a literal, only string can be null
-            node->number = left->dtype == D_STRING && left->text.empty();
+            node->number = left->dtype == D_NULL;
             break;
         default:
             break; // make compiler happy

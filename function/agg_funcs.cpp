@@ -23,9 +23,7 @@ static Cell *acs_aux(Row *row, int &count) {
     count = 0;
 
     for (val &cell: *row) {
-        check_number(cell, "sum");
-
-        if (check_null(cell)) {
+        if (check_null(cell) || !check_number(cell)) {
             continue;
         }
 
@@ -46,8 +44,9 @@ static Cell *tk_avg(Row *row) {
     val res = acs_aux(row, count);
 
     if (!count) {
-        res->text = NONE;
+        res->type = D_NULL;
     } else {
+        res->type = D_REAL;
         res->number /= count;
     }
 
@@ -58,6 +57,7 @@ static Cell *tk_count(Row *row) {
     int count;
     val res = acs_aux(row, count);
 
+    res->type = D_INTEGER;
     res->number = count;
     return res;
 
@@ -80,7 +80,7 @@ static Cell *tk_sum(Row *row) {
     val res = acs_aux(row, count);
 
     if (!count) {
-        res->text = NONE;
+        res->type = D_NULL;
     }
 
     return res;
@@ -88,7 +88,7 @@ static Cell *tk_sum(Row *row) {
 
 void init_agg_funcs() {
     ADD_AGG(avg, D_NUMBER);
-    ADD_AGG(count, D_NUMBER);
+    ADD_AGG(count, D_INTEGER);
     ADD_AGG(group_concat, D_STRING);
     ADD_AGG(max, D_STRING);
     ADD_AGG(min, D_STRING);
