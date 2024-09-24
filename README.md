@@ -17,6 +17,9 @@ Using SQL-like languages to process lightweight data in bash.
 - cmake
 - make
 - g++
+- pkg-config
+- Lib: OpenSSL
+- Lib: uuid
 
 ## #1. download the source code by `git clone` or any way you like
 
@@ -217,9 +220,18 @@ from std where col2 not like 'PID';"
 
 ### hash
 
-- [from_base64](#from_base64) 🟡
-- [to_base64](#to_base64) 🟡
-- [uuid](#uuid) 🟡
+- [from_base64](#from_base64) 🟢
+- [md5](#md5) 🟢
+- [serial](#serial) 🟢
+- [sha](#sha) 🟢
+- [sha1](#sha1) 🟢
+- [sha2](#sha2) 🟢
+- [sha224](#sha224) 🟢
+- [sha256](#sha256) 🟢
+- [sha384](#sha384) 🟢
+- [sha512](#sha512) 🟢
+- [to_base64](#to_base64) 🟢
+- [uuid](#uuid) 🟢
 
 ### aggregate
 
@@ -306,7 +318,7 @@ If `else` is omitted, returns NULL.
 
 > prototype: ceil(`x`)
 
-ceil() is a synonym for `CEILING()`.
+ceil() is a synonym for [CEILING()](#ceiling).
 
 ### ceiling
 
@@ -406,6 +418,15 @@ If `X` is NULL, this function returns NULL.
 > prototype: floor(`x`)
 
 Returns the largest integer value not greater than `X`. Returns NULL if `X` is NULL.
+
+### from_base64
+
+> prototype: from_base64(`str`)
+
+Takes a string encoded with the base-64 encoded rules
+and returns the decoded result as a binary string.
+
+The result is NULL if the argument is NULL or not a valid base-64 string.
 
 ### greatest
 
@@ -520,6 +541,14 @@ Returns NULL if `X` is NULL.
 Returns the maximum value of `expr`.
 MAX() may take a string argument; in such cases, it returns the maximum string value.
 
+### md5
+
+> prototype: md5(`str`)
+
+Calculates an MD5 128-bit checksum for the string.
+The value is returned as a string of 32 hexadecimal digits,
+or NULL if the argument was NULL.
+
 ### min
 
 > prototype: min(`expr`)
@@ -587,6 +616,66 @@ Rounds the argument `X` to `D` decimal places.
 
 If `X` or `D` is NULL, returns NULL.
 
+### serial
+
+> prototype: serial([`n`])
+
+Returns a random serial number.
+If an integer argument `N` is specified, it is used as the length of the serial number,
+Otherwise, the length is 8.
+
+### sha
+
+> prototype: sha(`str`)
+
+sha() is synonymous with [SHA1()](#sha1).
+
+### sha1
+
+> prototype: sha1(`str`)
+
+Calculates an SHA-1 160-bit checksum for the string.
+The value is returned as a string of 40 hexadecimal digits,
+or NULL if the argument is NULL.
+
+### sha2
+
+> prototype: sha2(`str`, `[n]`)
+
+Calculates the SHA-2 family of hash functions (SHA-224, SHA-256, SHA-384, and SHA-512).
+The first argument is the plaintext string to be hashed.
+The second argument indicates the desired bit length of the result,
+which must have a value of 224, 256, 384, 512, or 0 (which is equivalent to 256).
+If the second argument is omitted, the default is 256.
+
+If either argument is NULL or the hash length is not one of the permitted values,
+the return value is NULL.
+Otherwise, the function result is a hash value containing the desired number of bits.
+
+### sha224
+
+> prototype: sha224(`str`)
+
+This function is the same as [SHA2()](#sha2) with a hash length of 224 bits.
+
+### sha256
+
+> prototype: sha256(`str`)
+
+This function is the same as [SHA2()](#sha2) with a hash length of 256 bits.
+
+### sha384
+
+> prototype: sha384(`str`)
+
+This function is the same as [SHA2()](#sha2) with a hash length of 384 bits.
+
+### sha512
+
+> prototype: sha512(`str`)
+
+This function is the same as [SHA2()](#sha2) with a hash length of 512 bits.
+
 ### sign
 
 > prototype: sign(`x`)
@@ -633,6 +722,18 @@ Returns the sum of `expr`(skip NULL value). If all `expr`s are NULL, returns NUL
 
 Returns the tangent of `X`, where `X` is given in radians. Returns NULL if `X` is NULL.
 
+### to_base64
+
+> prototype: to_base64(`str`)
+
+Converts the string argument to base-64 encoded form and returns the result as
+a character string with the connection character set and collation.
+If the argument is not a string, it is converted to a string
+before conversion takes place.
+
+The result is NULL if the argument is NULL.
+Base-64 encoded strings can be decoded using the [FROM_BASE64()](#from_base64) function.
+
 ### truncate
 
 > prototype: truncate(`x`, `[d]`)
@@ -642,6 +743,12 @@ If `D` is 0, the result has no decimal point or fractional part.
 `D` can be negative to cause `D` digits left of the decimal point of the value `X` to become zero.
 
 If `X` or `D` is NULL, returns NULL.
+
+### uuid
+
+> prototype: uuid()
+
+Returns a string that conforms to UUID version 4 as described in RFC 4122.
 
 ### version
 

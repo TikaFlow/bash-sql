@@ -15,6 +15,9 @@
 - cmake
 - make
 - g++
+- pkg-config
+- Lib: OpenSSL
+- Lib: uuid
 
 ## #1. 通过克隆项目或其他方式下载源代码
 

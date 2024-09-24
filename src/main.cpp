@@ -210,7 +210,7 @@ void handle_curd() {
 void interactive() {
 
     while (true) {
-        cout << endl << " (sql) > " << flush;
+        cout << endl << "(sql)> " << flush;
 
         std::getline(std::cin, options->sql);
         options->sql = trim(options->sql);

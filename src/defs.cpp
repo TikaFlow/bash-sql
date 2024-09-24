@@ -64,7 +64,6 @@ String Cell::to_string() const {
         case D_NULL:
             return NONE;
         case D_BOOL:
-            return this->number == 0 ? "false" : "true";
         case D_INTEGER:
         case D_REAL:
             out << std::fixed << std::setprecision(PRECISION) << this->number;
