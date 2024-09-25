@@ -64,7 +64,7 @@ static Cell *tk_count(Row *row) {
 }
 
 static Cell *tk_group_concat(Row *row) {
-    return concat_aux(row, "group_concat", ",", 0);
+    return concat_aux(row, "group_concat", ",");
 }
 
 static Cell *tk_max(Row *row) {

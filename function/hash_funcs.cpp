@@ -36,7 +36,7 @@ static Cell *hash_aux(Row *row, const String &func_name, const EVP_MD *hash, int
     EVP_MD_CTX_free(ctx);
 
     std::stringstream ss;
-    for (int i = 0; i < value_len; ++i) {
+    for (var i = 0; i < value_len; ++i) {
         ss << std::hex << setw(2) << std::setfill('0') << (int) value[i];
     }
 

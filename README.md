@@ -183,14 +183,14 @@ from std where col2 not like 'PID';"
 ### strings
 
 - [ascii](#ascii) 🟡
-- [binary](#binary) 🟡
+- [bin](#bin) 🟡
 - [char](#char) 🟡
 - [concat](#concat) 🟢
 - [concat_ws](#concat_ws) 🟢
-- [etl](#elt) 🟡
+- [elt](#elt) 🟡
 - [field](#field) 🟡
 - [hex](#hex) 🟢
-- [inser](#insert) 🟡
+- [insert](#insert) 🟡
 - [instr](#instr) 🟡
 - [lcase](#lcase) 🟡
 - [left](#left) 🟡

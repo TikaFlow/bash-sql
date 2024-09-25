@@ -14,7 +14,7 @@
 // constants
 #define NONE "<null>"
 #define DUAL "<dual>"
-#define PRECISION 16
+#define PRECISION 12
 
 // keyword
 #define var auto

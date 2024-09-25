@@ -22,6 +22,8 @@ namespace util {
 
     String to_lower(const String &str);
 
+    String to_upper(const String &str);
+
     Vector<String> *split_string(const String &query, char delimiter);
 
     Vector<String> *split_string_by_spaces(const String &input);

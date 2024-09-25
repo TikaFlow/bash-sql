@@ -57,7 +57,7 @@ bool check_equal(Cell *first, Cell *second) {
 
     switch (first->type) {
         case D_NULL:
-            return false; // I don't know null is equal to null or not
+            return false; // null never equal to anything
         case D_BOOL:
         case D_INTEGER:
         case D_REAL:

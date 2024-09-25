@@ -293,7 +293,7 @@ static void calc_like(Cell *cell, Cell *data, Cell *like) {
 
     var reg_exp = String("^");
     var esc = false;
-    for (char c: like->text) {
+    for (var c: like->text) {
         if (esc) {
             reg_exp += String(1, c);
             esc = false;

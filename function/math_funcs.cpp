@@ -112,7 +112,7 @@ static Cell *tk_ceiling(Row *row) {
     return math1(row, "ceiling", ceil, D_INTEGER);
 }
 
-static Cell *tk_conv(Row *row) {
+Cell *tk_conv(Row *row) {
     check_arg_nums(row, "conv", 3);
     val min_base = 2, max_base = 36;
 
@@ -142,7 +142,7 @@ static Cell *tk_conv(Row *row) {
         char *endptr;
         number = (int) strtol(num->text.c_str(), &endptr, from_base);
         if (endptr == num->text.c_str() || *endptr != '\0') {
-            return new Cell();
+            return new Cell("0");
         }
     }
     var str = String();

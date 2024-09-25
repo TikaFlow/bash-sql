@@ -25,6 +25,12 @@ namespace util {
         return res;
     }
 
+    String to_upper(const String &str) {
+        String res;
+        std::transform(str.begin(), str.end(), std::back_inserter(res), ::toupper);
+        return res;
+    }
+
     Vector<String> *split_string(const String &query, char delimiter) {
         val res = new Vector<String>();
         size_t pos = 0;
@@ -65,10 +71,17 @@ namespace util {
     }
 
     String &replace_all(String &str, const String &src, const String &dst) {
-        String::size_type pos;
+        if (str.empty() || src.empty()) {
+            return str;
+        }
+
+        val diff = dst.length() - src.length() + 1;
+
+        String::size_type pos = 0;
         while (true) {
-            if ((pos = str.find(src)) != npos) {
+            if ((pos = str.find(src, pos)) != npos) {
                 str.replace(pos, src.length(), dst);
+                pos += diff;
             } else {
                 break;
             }
