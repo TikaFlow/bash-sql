@@ -182,41 +182,41 @@ from std where col2 not like 'PID';"
 
 ### strings
 
-- [ascii](#ascii) 🟡
-- [bin](#bin) 🟡
-- [char](#char) 🟡
+- [ascii](#ascii) 🟢
+- [bin](#bin) 🟢
+- [char](#char) 🟢
 - [concat](#concat) 🟢
 - [concat_ws](#concat_ws) 🟢
-- [elt](#elt) 🟡
-- [field](#field) 🟡
+- [elt](#elt) 🟢
+- [field](#field) 🟢
 - [hex](#hex) 🟢
-- [insert](#insert) 🟡
-- [instr](#instr) 🟡
-- [lcase](#lcase) 🟡
-- [left](#left) 🟡
-- [length](#length) 🟡
-- [locate](#locate) 🟡
-- [lower](#lower) 🟡
-- [lpad](#lpad) 🟡
-- [ltrim](#ltrim) 🟡
-- [mid](#mid) 🟡
-- [oct](#oct) 🟡
-- [position](#position) 🟡
-- [repeat](#repeat) 🟡
-- [replace](#replace) 🟡
-- [reverse](#reverse) 🟡
-- [right](#right) 🟡
-- [rpad](#rpad) 🟡
-- [rtrim](#rtrim) 🟡
-- [space](#space) 🟡
-- [strcmp](#strcmp) 🟡
-- [substr](#substr) 🟡
-- [substring](#substring) 🟡
-- [substring_index](#substring_index) 🟡
-- [trim](#trim) 🟡
-- [ucase](#ucase) 🟡
-- [unhex](#unhex) 🟡
-- [upper](#upper) 🟡
+- [insert](#insert) 🟢
+- [instr](#instr) 🟢
+- [lcase](#lcase) 🟢
+- [left](#left) 🟢
+- [length](#length) 🟢
+- [locate](#locate) 🟢
+- [lower](#lower) 🟢
+- [lpad](#lpad) 🟢
+- [ltrim](#ltrim) 🟢
+- [mid](#mid) 🟢
+- [oct](#oct) 🟢
+- [position](#position) 🟢
+- [repeat](#repeat) 🟢
+- [replace](#replace) 🟢
+- [reverse](#reverse) 🟢
+- [right](#right) 🟢
+- [rpad](#rpad) 🟢
+- [rtrim](#rtrim) 🟢
+- [space](#space) 🟢
+- [strcmp](#strcmp) 🟢
+- [substr](#substr) 🟢
+- [substring](#substring) 🟢
+- [substring_index](#substring_index) 🟢
+- [trim](#trim) 🟢
+- [ucase](#ucase) 🟢
+- [unhex](#unhex) 🟢
+- [upper](#upper) 🟢
 
 ### hash
 
@@ -278,6 +278,13 @@ Returns NULL if `X` is not in the range -1 to 1, or if `X` is NULL.
 
 Returns the application name.
 
+### ascii
+
+> prototype: ascii(`str`)
+
+Returns the numeric value of the leftmost character of the string `str`.
+Returns 0 if `str` is the empty string. Returns NULL if `str` is NULL.
+
 ### asin
 
 > prototype: asin(`x`)
@@ -304,6 +311,14 @@ Returns the author of the application.
 
 Returns the average value of `expr`(skip NULL value). If all `expr`s are NULL, returns NULL.
 
+### bin
+
+> prototype: bin(`N`)
+
+Returns a string representation of the binary value of `N`. Returns NULL if `N` is NULL.
+
+This is equivalent to `CONV(N, 10, 2)`.
+
 ### case
 
 > prototype: case(`when1`, `then1`, ..., `whenN`, `thenN`, `else`)
@@ -325,6 +340,14 @@ ceil() is a synonym for [CEILING()](#ceiling).
 > prototype: ceiling(`x`)
 
 Returns the smallest integer value not less than `X`. Returns NULL if `X` is NULL.
+
+### char
+
+> prototype: char(`N`, ...)
+
+CHAR() interprets each argument N as an integer and returns a string
+consisting of the characters given by the code values of those integers.
+NULL values are skipped.
 
 ### coalesce
 
@@ -403,6 +426,16 @@ Returns the argument `X`, converted from radians to degrees. Returns NULL if `X`
 
 Cast `X` to double. Returns 0 if not a valid number.
 
+### elt
+
+> prototype: elt(`N`, `str1`, `str2`, ...)
+
+ELT() returns the `N`th element of the list of strings:
+`str1` if `N` = 1, `str2` if `N` = 2, and so on.
+Returns NULL if `N` is less than 1, greater than the number of arguments, or NULL.
+
+ELT() is the complement of [FIELD()](#field).
+
 ### exp
 
 > prototype: exp(`x`)
@@ -412,6 +445,15 @@ Returns the value of e (the base of natural logarithms) raised to the power of `
 The inverse of this function is `LOG()` (using a single argument only) or `LN()`.
 
 If `X` is NULL, this function returns NULL.
+
+### field
+
+> prototype: field(`str`, `str1`, `str2`, ...)
+
+Returns the index (position) of the `str` in the subsequent string list.
+Returns 0 if `str` is not found.
+
+FIELD() is the complement of [ELT()](#elt).
 
 ### floor
 
@@ -468,6 +510,26 @@ Returns `true_value` if `condition` is true, otherwise returns `false_value`.
 Returns `expr2` if `expr1` is NULL, otherwise returns `expr1`.
 This is the same as the `COALESCE()` function with two arguments.
 
+### insert
+
+> prototype: insert(`str`, `pos`, `len`, `newstr`)
+
+Returns the string `str`, with the substring beginning at position `pos`
+and `len` characters long replaced by the string `newstr`.
+Returns the original string if `pos` is not within the length of the string.
+Replaces the rest of the string from position `pos` if `len` is not within
+the length of the rest of the string.
+
+Returns NULL if any argument is NULL.
+
+### instr
+
+> prototype: instr(`str`, `substr`)
+
+Returns the position of the first occurrence of substring `substr` in string `str`.
+This is the same as the two-argument form of [LOCATE()](#locate),
+except that the order of the arguments is reversed.
+
 ### isnull
 
 > prototype: isnull(`expr`)
@@ -480,12 +542,31 @@ If `expr` is NULL, ISNULL() returns `true`, otherwise it returns `false`.
 
 Cast `X` to integer. Returns 0 if not a valid number.
 
+### lcase
+
+> prototype: lcase(`str`)
+
+LCASE() is a synonym for [LOWER()](#lower).
+
 ### least
 
 > prototype: least(`x1`, `x2`, ...)
 
 With two or more arguments, returns the smallest (minimum-valued) argument.
 The arguments are compared using the same rules as for `GREATEST()`.
+
+### left
+
+> prototype: left(`str`, `len`)
+
+Returns the leftmost `len` characters from the string `str`,
+or NULL if any argument is NULL.
+
+### length
+
+> prototype: length(`str`)
+
+Returns the length of the string str. Returns NULL if str is NULL.
 
 ### ln
 
@@ -499,6 +580,15 @@ Returns NULL if `X` is NULL.
 This function is synonymous with LOG(`X`).
 
 The inverse of this function is `EXP()`.
+
+### locate
+
+> prototype: locate(`substr`, `str`, `[pos]`)
+
+Returns the position of the first occurrence of substring `substr` in string `str`,
+starting at position `pos`, when `pos` is omitted, it starts at position 1.
+
+Returns 0 if `substr` is not in `str`. Returns NULL if any argument is NULL.
 
 ### log
 
@@ -534,6 +624,28 @@ Returns NULL if `X` is NULL.
 
 `LOG10`(`X`) is equivalent to `LOG`(10, `X`).
 
+### lower
+
+> prototype: lower(`str`)
+
+Returns the string `str` with all characters changed to lowercase, or NULL if `str` is NULL.
+
+### lpad
+
+> prototype: lpad(`str`, `len`, `padstr`)
+
+Returns the string `str`, left-padded with the string `padstr` to a length of `len` characters.
+If `str` is longer than `len`, the return value is shortened to `len` characters.
+
+Returns NULL if any of its arguments are NULL.
+
+### ltrim
+
+> prototype: ltrim(`str`)
+
+Returns the string `str` with leading space characters removed.
+Returns NULL if `str` is NULL.
+
 ### max
 
 > prototype: max(`expr`)
@@ -548,6 +660,12 @@ MAX() may take a string argument; in such cases, it returns the maximum string v
 Calculates an MD5 128-bit checksum for the string.
 The value is returned as a string of 32 hexadecimal digits,
 or NULL if the argument was NULL.
+
+### mid
+
+> prototype: mid(`str`, `pos`, `[len]`)
+
+MID() is a synonym for [SUBSTRING()](#substring).
 
 ### min
 
@@ -571,11 +689,24 @@ Modulo operation. Returns the remainder of `N` divided by `M`. Returns NULL if `
 Returns NULL if `expr1` equals `expr2`; otherwise returns `expr1`.
 This is the same as IF(`expr1` = `expr2`, NULL, `expr1`).
 
+### oct
+
+> prototype: oct(`N`)
+
+Returns a string representation of the octal value of `N`.
+This is equivalent to `CONV(N, 10, 8)`. Returns NULL if `N` is NULL.
+
 ### pi
 
 > prototype: pi()
 
 Returns the value of `π`(pi).
+
+### position
+
+> prototype: position(`substr`, `str`)
+
+This is the same as the two-argument form of [LOCATE()](#locate)
 
 ### pow
 
@@ -587,7 +718,7 @@ Returns the value of `X` raised to the power of `Y`. Returns NULL if `X` or `Y` 
 
 > prototype: power(`x`, `y`)
 
-This is a synonym for `POW()`.
+This is a synonym for [POW()](#pow).
 
 ### radians
 
@@ -606,6 +737,38 @@ Returns a random floating-point value `v` in the range 0 <= `v` < 1.0.
 If an integer argument `N` is specified, it is used as the seed value.
 For equal argument values, `RAND`(`N`) returns the same value each time.
 
+### repeat
+
+> prototype: repeat(`str`, `count`)
+
+Returns a string consisting of the string `str` repeated `count` times.
+If `count` is less than 1, returns an empty string.
+Returns NULL if `str` or `count` is NULL.
+
+### replace
+
+> prototype: replace(`str`, `from`, `to`)
+
+Returns the string `str` with
+all occurrences of the string `from` replaced by the string `to`.
+This function is case sensitive.
+
+Returns NULL if any of its arguments are NULL.
+
+### reverse
+
+> prototype: reverse(`str`)
+
+Returns the string `str` with the order of the characters reversed,
+or NULL if `str` is NULL.
+
+### right
+
+> prototype: right(`str`, `len`)
+
+Returns the rightmost `len` characters from the string `str`,
+or NULL if any argument is NULL.
+
 ### round
 
 > prototype: round(`x`, `[d]`)
@@ -615,6 +778,22 @@ Rounds the argument `X` to `D` decimal places.
 `D` can be negative to cause `D` digits left of the decimal point of the value `X` to become zero.
 
 If `X` or `D` is NULL, returns NULL.
+
+### rpad
+
+> prototype: rpad(`str`, `len`, `padstr`)
+
+Returns the string `str`, right-padded with the string `padstr` to a length of `len` characters.
+If `str` is longer than `len`, the return value is shortened to `len` characters.
+
+Returns NULL if any of its arguments are NULL.
+
+### rtrim
+
+> prototype: rtrim(`str`)
+
+Returns the string `str` with trailing space characters removed.
+Returns NULL if `str` is NULL.
 
 ### serial
 
@@ -676,6 +855,12 @@ This function is the same as [SHA2()](#sha2) with a hash length of 384 bits.
 
 This function is the same as [SHA2()](#sha2) with a hash length of 512 bits.
 
+### space
+
+> prototype: space(`n`)
+
+Returns a string consisting of `N` space characters, or NULL if `N` is NULL.
+
 ### sign
 
 > prototype: sign(`x`)
@@ -704,11 +889,50 @@ execute multiple times if there are multiple lines.
 
 Returns the square root of a non-negative number `X`. If `X` is NULL, the function returns NULL.
 
+### strcmp
+
+> prototype: strcmp(`str1`, `str2`)
+
+Returns 0 if the strings are the same,
+-1 if the first argument is smaller than the second, 1 otherwise.
+
+Returns NULL if either argument is NULL.
+
 ### string
 
 > prototype: string(`x`)
 
 Cast `X` to string.
+
+### substr
+
+> prototype: substr(`str`, `pos`, `[len]`)
+
+SUBSTR() is a synonym for [SUBSTRING()](#substring).
+
+### substring
+
+> prototype: substring(`str`, `pos`, `[len]`)
+
+Returns a substring `len` characters long from string `str`, starting at position `pos`.
+The first character of the string is at position 1.
+It is also possible to use a negative value for pos.
+In this case, the beginning of the substring is
+pos characters from the end of the string, rather than the beginning.
+A value of 0 for `pos` returns an empty string.
+
+It returns NULL if any of its arguments are NULL.
+If `len` is less than 1, the result is the empty string.
+
+### substring_index
+
+> prototype: substring_index(`str`, `delim`, `count`)
+
+Returns the substring from string `str` before count occurrences of the delimiter `delim`.
+If `count` is positive, everything to the left of the final delimiter (counting from the left) is returned.
+If `count` is negative, everything to the right of the final delimiter (counting from the right) is returned.
+
+Returns NULL if any of its arguments are NULL.
 
 ### sum
 
@@ -734,6 +958,13 @@ before conversion takes place.
 The result is NULL if the argument is NULL.
 Base-64 encoded strings can be decoded using the [FROM_BASE64()](#from_base64) function.
 
+### trim
+
+> prototype: trim(`str`)
+
+Returns the string `str` with all leading or trailing space characters removed.
+Returns NULL if `str` is NULL.
+
 ### truncate
 
 > prototype: truncate(`x`, `[d]`)
@@ -743,6 +974,31 @@ If `D` is 0, the result has no decimal point or fractional part.
 `D` can be negative to cause `D` digits left of the decimal point of the value `X` to become zero.
 
 If `X` or `D` is NULL, returns NULL.
+
+## ucase
+
+> prototype: ucase(`str`)
+
+UCASE() is a synonym for [UPPER()](#upper).
+
+### unhex
+
+> prototype: unhex(`hex_string`)
+
+Returns a string containing the character representation of the hexadecimal argument.
+
+The characters in the argument string must be legal hexadecimal digits.
+If the argument contains any non-hexadecimal digits,
+or is itself NULL, the result is NULL:
+
+It's the opposite of the [HEX()](#hex) function.
+This is different from the function of the same name in MySQL.
+
+### upper
+
+> prototype: upper(`str`)
+
+Returns the string `str` with all characters changed to uppercase, or NULL if `str` is NULL.
 
 ### uuid
 
