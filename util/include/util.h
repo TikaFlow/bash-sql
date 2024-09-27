@@ -45,6 +45,8 @@ namespace util {
     int compare_number(double a, double b);
 
     String cut_tail(const String &str);
+
+    bool is_leap_year(int year);
 }
 
 using namespace util;

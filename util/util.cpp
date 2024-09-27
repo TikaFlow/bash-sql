@@ -140,4 +140,8 @@ namespace util {
 
         return str.substr(0, pos + 1);
     }
+
+    bool is_leap_year(int year) {
+        return year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+    }
 }
