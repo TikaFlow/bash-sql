@@ -137,6 +137,9 @@ from std where col2 not like 'PID';"
 
 ### date and time
 
+> All date and time formats are compatible with
+> the [`strftime`](https://en.cppreference.com/w/cpp/chrono/c/strftime) function.
+
 - [adddate](#adddate) 🟢
 - [addtime](#addtime) 🟢
 - [curdate](#curdate) 🟢
@@ -147,6 +150,7 @@ from std where col2 not like 'PID';"
 - [date](#date) 🟢
 - [datediff](#datediff) 🟢
 - [date_add](#date_add) 🟢
+- [date_format](#date_format) 🟢
 - [date_sub](#date_sub) 🟢
 - [day](#day) 🟢
 - [dayname](#dayname) 🟢
@@ -272,6 +276,19 @@ Returns the absolute value of `X`, or NULL if `X` is NULL.
 
 Returns the arc cosine of `X`, that is, the value whose cosine is `X`.
 Returns NULL if `X` is not in the range -1 to 1, or if `X` is NULL.
+
+### adddate
+
+> prototype: adddate(`date`, `interval`, `[unit]`)
+
+ADDDATE() is a synonym for [DATE_ADD()](#date_add).
+
+### addtime
+
+> prototype: addtime(`date`, `expr`)
+
+Adds `expr` to `date`. `expr` is a time expression.
+Return NULL if `date` or `expr` are NULL.
 
 ### app
 
@@ -405,6 +422,117 @@ Returns the cotangent of `X`. Returns NULL if `X` is NULL.
 
 Returns a count of the number of non-NULL values of `expr` in the rows.
 
+### curdate
+
+> prototype: curdate()
+
+Returns the current date as a value in 'YYYY-MM-DD' format.
+
+### current_date
+
+> prototype: current_date()
+
+CURRENT_DATE() is a synonym for [CURDATE()](#curdate).
+
+### current_time
+
+> prototype: current_time()
+
+CURRENT_TIME() is a synonym for [CURTIME()](#curtime).
+
+### current_timestamp
+
+> prototype: current_timestamp()
+
+CURRENT_TIMESTAMP() is a synonym for [NOW()](#now).
+
+### curtime
+
+> curtime()
+
+Returns the current time as a value in 'hh:mm:ss' format.
+
+### date
+
+> prototype: date(`expr`)
+
+Extracts the date part of the date or datetime expression `expr`.
+Returns NULL if `expr` is NULL.
+
+### datediff
+
+> prototype: datediff(`expr1`, `expr2`)
+
+Returns `expr1` − `expr2` expressed as a value in days from one date to the other.
+`expr1` and `expr2` are date or date-and-time expressions.
+Only the date parts of the values are used in the calculation.
+
+### date_add
+
+> prototype: date_add(`date`, `interval`, `[unit]`)
+
+The `date` argument specifies the starting date or datetime value,
+and the `interval` argument specifies the interval value to be added
+to the starting date, the `unit` argument specifies the units of the interval value.
+
+Available units are:
+
+- 1: second
+- 2: minute
+- 3: hour
+- 4: day, default
+- 5: week
+
+Returns NULL if either `date` or `interval` is NULL.
+
+### date_format
+
+> prototype: date_format(`date`, `format`)
+
+Formats the `date` value according to the `format` string.
+If either argument is NULL, the function returns NULL.
+
+### date_sub
+
+> prototype: date_sub(`date`, `interval`, `[unit]`)
+
+It's the same as [date_add](#date_add) but subtracts the interval from the `date`.
+
+### day
+
+> prototype: day(`date`)
+
+DAY() is a synonym for [DAYOFMONTH()](#dayofmonth).
+
+### dayname
+
+> prototype: dayname(`date`)
+
+Returns the name of the weekday for `date`. The language used for the name is
+controlled by the value of the lc_time_names system variable.
+Returns NULL if `date` is NULL.
+
+### dayofmonth
+
+> prototype: dayofmonth(`date`)
+
+Returns the day of the month for `date`, in the range 1 to 31.
+Returns NULL if `date` is NULL.
+
+### dayofweek
+
+> prototype: dayofweek(`date`)
+
+Returns the weekday index for `date` (0 = Sunday, 1 = Monday, ... 6 = Saturday).
+Returns NULL if `date` is NULL.
+
+### dayofyear
+
+> prototype: dayofyear(`date`)
+
+Returns the day of the year for `date`, in the range 1 to 366.
+Returns NULL if `date` is NULL.
+
 ### decode
 
 > prototype: decode(`expr`, `value1`, `result1`, `value2`, `result2`, ..., [`default`])
@@ -471,6 +599,14 @@ and returns the decoded result as a binary string.
 
 The result is NULL if the argument is NULL or not a valid base-64 string.
 
+### from_unixtime
+
+> prototype: from_unixtime(`timestamp`, `[format]`)
+
+Returns a representation of unix_timestamp as a character string value
+with the format given by the `format` argument.
+If `format` is omitted, the default format is '%F %T'.
+
 ### greatest
 
 > prototype: greatest(`x1`, `x2`, ...)
@@ -497,6 +633,13 @@ It returns NULL if there are no non-NULL values.
 > prototype: hex(`n` or `s`)
 
 This function can be used to obtain a hexadecimal representation of a decimal number or a string.
+
+### hour
+
+> prototype: hour(`time`)
+
+Returns the hour for time. The range of the return value is 0 to 23.
+Returns NULL if `time` is NULL.
 
 ### if
 
@@ -543,6 +686,13 @@ If `expr` is NULL, ISNULL() returns `true`, otherwise it returns `false`.
 
 Cast `X` to integer. Returns 0 if not a valid number.
 
+### last_day
+
+> prototype: last_day(`date`)
+
+Takes a date or datetime value and returns the corresponding value for the last day of the month.
+Returns NULL if the `date` is invalid or NULL.
+
 ### lcase
 
 > prototype: lcase(`str`)
@@ -581,6 +731,18 @@ Returns NULL if `X` is NULL.
 This function is synonymous with LOG(`X`).
 
 The inverse of this function is `EXP()`.
+
+### localtime
+
+> prototype: localtime()
+
+LOCALTIME() is a synonym for [NOW()](#now).
+
+### localtimestamp
+
+> prototype: localtimestamp()
+
+LOCALTIMESTAMP() is a synonym for [NOW()](#now).
 
 ### locate
 
@@ -647,6 +809,21 @@ Returns NULL if any of its arguments are NULL.
 Returns the string `str` with leading space characters removed.
 Returns NULL if `str` is NULL.
 
+### makedate
+
+> prototype: makedate(`year`, `dayofyear`)
+
+Returns a date, given year and day-of-year values.
+`dayofyear` must be greater than 0 or the result is NULL.
+The result is also NULL if either argument is NULL.
+
+### maketime
+
+> prototype: maketime(`hour`, `minute`, `second`)
+
+Returns a time value calculated from the `hour`, `minute`, and `second` arguments.
+Returns NULL if any of its arguments are NULL.
+
 ### max
 
 > prototype: max(`expr`)
@@ -675,6 +852,12 @@ MID() is a synonym for [SUBSTRING()](#substring).
 Returns the minimum value of `expr`.
 MIN() may take a string argument; in such cases, it returns the minimum string value.
 
+### minute
+
+> prototype: minute(`time`)
+
+Returns the minute for `time`, in the range 0 to 59, or NULL if time is NULL.
+
 ### mod
 
 > prototype: mod(`n`, `m`)
@@ -682,6 +865,27 @@ MIN() may take a string argument; in such cases, it returns the minimum string v
 Modulo operation. Returns the remainder of `N` divided by `M`. Returns NULL if `M` or `N` is NULL.
 
 `MOD`(`N`, 0) returns NULL.
+
+### month
+
+> prototype: month(`date`)
+
+Returns the month for `date`, in the range 1 to 12 for January to December.
+Returns NULL if date is NULL.
+
+### monthname
+
+> prototype: monthname(`date`)
+
+Returns the full name of the month for `date`. The language used for the name is
+controlled by the value of the lc_time_names system variable.
+Returns NULL if `date` is NULL.
+
+### now
+
+> prototype: now()
+
+Returns the current date and time as a value in 'YYYY-MM-DD hh:mm:ss' format.
 
 ### nullif
 
@@ -720,6 +924,13 @@ Returns the value of `X` raised to the power of `Y`. Returns NULL if `X` or `Y` 
 > prototype: power(`x`, `y`)
 
 This is a synonym for [POW()](#pow).
+
+### quarter
+
+> prototype: quarter(`date`)
+
+Returns the quarter of the year for `date`,
+in the range 1 to 4, or NULL if `date` is NULL.
 
 ### radians
 
@@ -795,6 +1006,19 @@ Returns NULL if any of its arguments are NULL.
 
 Returns the string `str` with trailing space characters removed.
 Returns NULL if `str` is NULL.
+
+### second
+
+> prototype: second(`time`)
+
+Returns the second for `time`, in the range 0 to 59, or NULL if `time` is NULL.
+
+### sec_to_time
+
+> prototype: sec_to_time(`seconds`)
+
+Returns the `seconds` argument, converted to hours, minutes, and seconds.
+Returns NULL if `seconds` is NULL.
 
 ### serial
 
@@ -905,6 +1129,19 @@ Returns NULL if either argument is NULL.
 
 Cast `X` to string.
 
+### str_to_date
+
+> prototype: str_to_date(`str`, `format`)
+
+Returns the argument parsed as a date. If `str` or `format` is NULL, the function returns NULL.
+This function is the opposite of [DATE_FORMAT()](#date_format).
+
+### subdate
+
+> prototype: subdate(`date`, `days`)
+
+SUBDATE() is a synonym for [DATE_SUB()](#date_sub) of two-argument form.
+
 ### substr
 
 > prototype: substr(`str`, `pos`, `[len]`)
@@ -935,17 +1172,50 @@ If `count` is negative, everything to the right of the final delimiter (counting
 
 Returns NULL if any of its arguments are NULL.
 
+### subtime
+
+> prototype: subtime(`date`, `expr`)
+
+It's the same as [ADDTIME()](#addtime) but subtracts.
+
 ### sum
 
 > prototype: sum(`expr`)
 
 Returns the sum of `expr`(skip NULL value). If all `expr`s are NULL, returns NULL.
 
+### sysdate
+
+> prototype: sysdate()
+
+It's a synonym for [NOW()](#now).
+
 ### tan
 
 > prototype: tan(`x`)
 
 Returns the tangent of `X`, where `X` is given in radians. Returns NULL if `X` is NULL.
+
+### time
+
+> prototype: time(`expr`)
+
+Extracts the time part of the time or datetime expression `expr` and
+returns it as a string. Returns NULL if `expr` is NULL.
+
+### timediff
+
+> prototype: timediff(`time1`, ``)
+
+Returns time1 − time2 expressed as a time value.
+Returns NULL if either argument is NULL.
+
+### time_tosec
+
+> prototype: time_tosec(`time`)
+
+Returns the `time` argument, converted to seconds.
+Returns NULL if time is NULL.
 
 ### to_base64
 
@@ -995,6 +1265,13 @@ or is itself NULL, the result is NULL:
 It's the opposite of the [HEX()](#hex) function.
 This is different from the function of the same name in MySQL.
 
+### unix_timestamp
+
+> prototype: unix_timestamp(`[date]`)
+
+Returns the value of the argument as seconds since '1970-01-01 00:00:00' UTC.
+If `date` is omitted, use the current date and time.
+
 ### upper
 
 > prototype: upper(`str`)
@@ -1012,3 +1289,54 @@ Returns a string that conforms to UUID version 4 as described in RFC 4122.
 > prototype: version()
 
 Returns the version of the application.
+
+### week
+
+> prototype: week(`date`, `[first_day]`, `[mode]`)
+
+This function returns the week number for `date`.
+The `first_day` argument determines the first day of the week,
+and the `mode` argument determines the counting mode of the weeks.
+The default values for `first_day` and `mode` are 1 and 3, respectively.
+
+`first_day` can be 0 (Sunday) or 1 (Monday), ... 6 (Saturday).
+`mode` can be one of the following values:
+
+- 0: in range 0-53, week 0 is the week that with a `first_day` in this year.
+- 1: in range 0-53, week 0 is the week that with 4 or more days in this year.
+- 2: in range 1-53, week 1 is the week that with a `first_day` in this year.
+- 3: in range 1-53, week 1 is the week that with 4 or more days in this year.
+
+### weekday
+
+> prototype: weekday(`date`)
+
+Returns the weekday index for `date` (0 = Sunday, 1 = Monday, ... 6 = Saturday).
+Returns NULL if date is NULL.
+
+### weekofyear
+
+> prototype: weekofyear(`date`)
+
+Returns the calendar week of the `date` as a number in the range from 1 to 53.
+Returns NULL if `date` is NULL.
+
+This function is equivalent to WEEK(date, 1, 3).
+
+### year
+
+> prototype: year(`date`)
+
+Returns the year for `date`.
+The year is returned as a number in the range 1000 to 9999.
+Returns NULL if `date` is NULL.
+
+### yearweek
+
+> prototype: yearweek(`date`, `[first_day]`, `[mode]`)
+
+Returns the year and week for `date`.
+The year in the result may be different from the year in the `date` argument
+for the first and the last week of the year. Returns NULL if `date` is NULL.
+
+The `first_day` and `mode` argument works exactly like to [WEEK()](#week).

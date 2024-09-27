@@ -113,7 +113,7 @@ static Cell *date_add_sub_aux(Row *row, const String &func_name, long(*op)(long,
     }
 
     val bf_str = row->at(0)->text;
-    var interval = 0, unit = 1;
+    var interval = 0, unit = 4;
     var af_str = String();
     if (row->at(1)->type == D_INTEGER) {
         interval = (int) row->at(1)->number;
@@ -251,6 +251,18 @@ static Cell *tk_date_add(Row *row) {
     return date_add_sub_aux(row, "date_add", [](long a, long b) { return a + b; });
 }
 
+static Cell *tk_date_format(Row *row) {
+    check_arg_nums(row, "date_format", 2);
+
+    if (check_null(row->at(0)) || check_null(row->at(1))) {
+        return new Cell();
+    }
+
+    val str = row->at(0)->text;
+    val fmt = row->at(1)->text;
+    return new Cell(from_timestamp(to_timestamp(str), fmt));
+}
+
 static Cell *tk_date_sub(Row *row) {
     return date_add_sub_aux(row, "date_sub", [](long a, long b) { return a - b; });
 }
@@ -320,40 +332,25 @@ static Cell *tk_hour(Row *row) {
 }
 
 static Cell *tk_last_day(Row *row) {
-    val res = tm_attr_aux(row, "last_day", [](const Time &tm) { return tm.tm_mon + 1; });
-    val mon = (int) res->number;
+    check_arg_nums(row, "last_day", 1);
 
-    var tm = to_time(row->at(0)->text);
+    if (check_null(row->at(0))) {
+        return new Cell();
+    }
+
+    var tm = to_time(row->at(0)->text, "%F");
     if (mktime(&tm) < 0) {
         return new Cell();
     }
-    switch (mon) {
-        case 1:
-        case 3:
-        case 5:
-        case 7:
-        case 8:
-        case 10:
-        case 12:
-            res->number = 31;
-            break;
-        case 4:
-        case 6:
-        case 9:
-        case 11:
-            res->number = 30;
-            break;
-        case 2:
-            if (is_leap_year(tm.tm_year + 1900)) {
-                res->number = 29;
-            } else {
-                res->number = 28;
-            }
-            break;
-        default:
-            break; // make compiler happy
+
+    tm.tm_mon += 1;
+    tm.tm_mday = 1;
+    if (tm.tm_mon == 12) {
+        tm.tm_mon = 0;
+        tm.tm_year += 1;
     }
-    return res;
+
+    return new Cell(from_timestamp(mktime(&tm) - I_DAY + GMT_OFFSET, "%F"));
 }
 
 static Cell *tk_localtime(Row *row) {
@@ -450,7 +447,7 @@ static Cell *tk_monthname(Row *row) {
 static Cell *tk_now(Row *row) {
     check_arg_nums(row, "now", 0);
     val now = time(null);
-    return new Cell(from_timestamp(now));
+    return new Cell(from_timestamp(now + GMT_OFFSET));
 }
 
 static Cell *tk_quarter(Row *row) {
@@ -708,8 +705,7 @@ static Cell *tk_yearweek(Row *row) {
     res->text += res->number < 10 ? "0" : "";
     res->text += to_string((int) res->number);
 
-    res->number = 0;
-    res->type = D_STRING;
+    res->number = stoi(res->text);
 
     return res;
 }
@@ -729,6 +725,7 @@ void init_date_funcs() {
     ADD_NORMAL(date, D_STRING);
     ADD_NORMAL(datediff, D_INTEGER);
     ADD_NORMAL(date_add, D_STRING);
+    ADD_NORMAL(date_format, D_STRING);
     ADD_NORMAL(date_sub, D_STRING);
     ADD_NORMAL(day, D_INTEGER);
     ADD_NORMAL(dayname, D_STRING);
