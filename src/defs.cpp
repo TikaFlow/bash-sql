@@ -74,3 +74,24 @@ String Cell::to_string() const {
             return ""; // make compiler happy
     }
 }
+
+String ASTNode::to_string() const {
+    if (this->atype != A_LITERAL) {
+        return "";
+    }
+
+    std::ostringstream out;
+    switch (this->dtype) {
+        case D_NULL:
+            return NONE;
+        case D_BOOL:
+        case D_INTEGER:
+        case D_REAL:
+            out << std::fixed << std::setprecision(PRECISION) << this->number;
+            return cut_tail(out.str());
+        case D_STRING:
+            return this->text;
+        default:
+            return ""; // make compiler happy
+    }
+}

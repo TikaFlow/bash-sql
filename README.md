@@ -251,6 +251,9 @@ from std where col2 not like 'PID';"
 
 - [app](#app)
 - [author](#author)
+- [get](#get)
+- [set](#set)
+- [unset](#unset)
 - [version](#version)
 
 ### misc
@@ -606,6 +609,15 @@ The result is NULL if the argument is NULL or not a valid base-64 string.
 Returns a representation of unix_timestamp as a character string value
 with the format given by the `format` argument.
 If `format` is omitted, the default format is '%F %T'.
+
+### get
+
+> prototype: get(`key`)
+
+Returns the value of an environment variable named `key`,
+or empty string if the variable does not exist.
+
+`@key` is a synonym for `get(key)`.
 
 ### greatest
 
@@ -1028,6 +1040,12 @@ Returns a random serial number.
 If an integer argument `N` is specified, it is used as the length of the serial number,
 Otherwise, the length is 8.
 
+### set
+
+> prototype: set(`key`, `value`)
+
+Set or update (if exists) the environment variable `key` to `value`.
+
 ### sha
 
 > prototype: sha(`str`)
@@ -1080,12 +1098,6 @@ This function is the same as [SHA2()](#sha2) with a hash length of 384 bits.
 
 This function is the same as [SHA2()](#sha2) with a hash length of 512 bits.
 
-### space
-
-> prototype: space(`n`)
-
-Returns a string consisting of `N` space characters, or NULL if `N` is NULL.
-
 ### sign
 
 > prototype: sign(`x`)
@@ -1107,6 +1119,12 @@ Sleep(pauses) for the specified number of milliseconds. Returns 0.
 
 Note that since the program is single-threaded, the sleep function will
 execute multiple times if there are multiple lines.
+
+### space
+
+> prototype: space(`n`)
+
+Returns a string consisting of `N` space characters, or NULL if `N` is NULL.
 
 ### sqrt
 
@@ -1271,6 +1289,12 @@ This is different from the function of the same name in MySQL.
 
 Returns the value of the argument as seconds since '1970-01-01 00:00:00' UTC.
 If `date` is omitted, use the current date and time.
+
+### unset
+
+> prototype: unset(`key`)
+
+Delete environment variable named `key`.
 
 ### upper
 

@@ -8,7 +8,7 @@
 #include "global.h"
 
 typedef enum {
-    T_EOF,
+    T_EOF, T_AT,
     T_PLUS, T_MINUS, T_STAR, T_SLASH,
     T_EQ, T_NE1, T_NE2, T_LT, T_GT, T_LE, T_GE,
     T_LPAREN, T_RPAREN, T_COMMA, T_SEMICOLON,
@@ -70,6 +70,8 @@ struct ASTNode {
             atype(atype), dtype(dtype), left(left), right(right), text(text) {}
 
     bool tableless() const;
+
+    String to_string() const;
 };
 
 struct Cell {

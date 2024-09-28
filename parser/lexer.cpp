@@ -48,6 +48,7 @@ static void init_lexer() {
     KEYWORD.insert({"describe", T_DESCRIBE});
 
     DESC.insert({T_EOF, "EOF"});
+    DESC.insert({T_AT, "@"});
     DESC.insert({T_PLUS, "+"});
     DESC.insert({T_MINUS, "-"});
     DESC.insert({T_STAR, "*"});
@@ -306,6 +307,13 @@ static Token *scan() {
     switch (c) {
         case EOF:
             return null;
+        case '@':
+            token->type = T_AT;
+            if ((c = next()) != '_' && !isalpha(c)) {
+                show_error("Invalid character after '@': " + String(1, c));
+            }
+            prev(c);
+            break;
         case '+':
             token->type = T_PLUS;
             break;
@@ -367,7 +375,7 @@ static Token *scan() {
                 scan_number(token);
                 break;
             }
-            if (isalpha(c) || c == '`') {
+            if (isalpha(c) || c == '`' || c == '_') {
                 scan_identifier(token, c);
                 break;
             }

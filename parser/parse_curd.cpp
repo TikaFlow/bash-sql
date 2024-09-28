@@ -219,6 +219,14 @@ static Pair<String, String> *resolve_column(const String &str) {
 static ASTNode *function_call(const String &name) {
     ASTNode *left = null, *param;
     val func = to_lower(name);
+
+    if (func == "@") {
+        val env = match(T_IDENTIFIER, "environment variable name")->text;
+        param = new ASTNode(A_LITERAL, D_STRING, null, null, env);
+        left = new ASTNode(A_PARAM, D_NONE, left, param);
+        return new ASTNode(A_FUNC_CALL, D_STRING, left, null, "get");
+    }
+
     if (!FUNCTIONS.count(func)) {
         show_error("Unknown function: '" + func + "'");
     }
@@ -275,6 +283,9 @@ static ASTNode *primary() {
             } else {
                 node = new ASTNode(A_COLUMN, D_NONE, null, null, name);
             }
+            break;
+        case T_AT:
+            node = function_call("@");
             break;
         case T_LPAREN:
             node = expression();
@@ -945,8 +956,9 @@ static void validate_select(TableSet *from, Vector<SelectNode> *select) {
             name = resolve_column(col_exp.col->text)->second;
             col_exp.as = name;
         } else if (col_exp.col->atype == A_FUNC_CALL) {
-            name = col_exp.col->text;
-            col_exp.as = name + "()"; // add '()' to avoid subsequent use, just for printing
+            col_exp.as = col_exp.col->text + "()"; // add '()' to avoid subsequent use, just for printing
+        } else if (col_exp.col->atype == A_LITERAL) {
+            col_exp.as = col_exp.col->to_string();
         }
 
         // dtype has been repaired
