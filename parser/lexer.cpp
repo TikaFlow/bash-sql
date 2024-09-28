@@ -254,8 +254,13 @@ static void scan_number(Token *token) {
 /**
  * scan an identifier, and save it to token, after that, check if it is a keyword
  * @param token the token to be scanned
+ * @param first the first character of the identifier
  */
-static void scan_identifier(Token *token) {
+static void scan_identifier(Token *token, char first) {
+    if (first == '`') {
+        next();
+    }
+
     char c;
     val start = INDEX - 1;
 
@@ -273,6 +278,14 @@ static void scan_identifier(Token *token) {
 
     token->type = T_IDENTIFIER;
     token->text = options->sql.substr(start, INDEX - start);
+
+    if (first == '`') {
+        if (c == '`') {
+            next();
+            return;
+        }
+        show_error("unterminated quoting");
+    }
 
     check_keyword(token);
 }
@@ -349,8 +362,8 @@ static Token *scan() {
                 scan_number(token);
                 break;
             }
-            if (isalpha(c)) {
-                scan_identifier(token);
+            if (isalpha(c) || c == '`') {
+                scan_identifier(token, c);
                 break;
             }
             show_error("Invalid character: " + String(1, c));

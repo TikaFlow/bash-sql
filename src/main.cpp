@@ -247,7 +247,8 @@ void prepare_data(const String &table) {
     // data has been trimmed so that the first line won't be empty
 
     val res = new Result();
-    for (var &line: *lines) {
+    for (int r = options->title; r < lines->size(); r++) {
+        val line = lines->at(r);
         val row = new Row();
         var cols = options->delimiter
                    ? split_string(line, options->delimiter)
@@ -281,8 +282,27 @@ void prepare_data(const String &table) {
         res->emplace_back(row);
     }
     val schema = new Schema();
-    for (var i = 0; i < options->columns; ++i) {
-        schema->push_back({"col" + std::to_string(i + 1), D_STRING});
+    if (options->title) {
+        val line = lines->at(0);
+        var cols = options->delimiter
+                   ? split_string(line, options->delimiter)
+                   : split_string_by_spaces(line);
+
+        val size = cols->size();
+        if (size > options->columns) {
+            for (var i = options->columns; i < size; i++) {
+                cols->at(options->columns - 1) += "_" + cols->at(i);
+            }
+        }
+        cols->resize(options->columns);
+
+        for (val &col: *cols) {
+            schema->push_back({col, D_STRING});
+        }
+    } else {
+        for (var i = 0; i < options->columns; ++i) {
+            schema->push_back({"col" + std::to_string(i + 1), D_STRING});
+        }
     }
 
     db->insert({table, {schema, res}});

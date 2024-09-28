@@ -54,7 +54,7 @@ sql [OPTION] [QUERIES]
 
 - `-h`, `--help`: Display this help and exit.
 - `-v`, `--version`: Output version information and exit.
-- `-t`, `--title`: Print table title.
+- `-t`, `--title`: First row is table title.
 - `-l`, `--line-no`: Print line number.
 - `-i`, `--interactive`: Interactive mode.
 - `-f`, `--file=FILE`: Read data from FILE.
@@ -86,180 +86,176 @@ from std where col2 not like 'PID';"
 
 ## Supported functions
 
-> 🟡 planning
->
-> 🟢 implemented
-
 ### type conversion
 
-- [int](#int) 🟢
-- [double](#double) 🟢
-- [string](#string) 🟢
+- [int](#int)
+- [double](#double)
+- [string](#string)
 
 ### flow control
 
-- [case](#case) 🟢
-- [decode](#decode) 🟢
-- [if](#if) 🟢
-- [ifnull](#ifnull) 🟢
-- [nullif](#nullif) 🟢
+- [case](#case)
+- [decode](#decode)
+- [if](#if)
+- [ifnull](#ifnull)
+- [nullif](#nullif)
 
 ### mathematical
 
-- [abs](#abs) 🟢
-- [acos](#acos) 🟢
-- [asin](#asin) 🟢
-- [atan](#atan) 🟢
-- [ceil](#ceil) 🟢
-- [ceiling](#ceiling) 🟢
-- [conv](#conv) 🟢
-- [cos](#cos) 🟢
-- [cot](#cot) 🟢
-- [degrees](#degrees) 🟢
-- [exp](#exp) 🟢
-- [floor](#floor) 🟢
-- [ln](#ln) 🟢
-- [log](#log) 🟢
-- [log2](#log2) 🟢
-- [log10](#log10) 🟢
-- [mod](#mod) 🟢
-- [pi](#pi) 🟢
-- [pow](#pow) 🟢
-- [power](#power) 🟢
-- [radians](#radians) 🟢
-- [rand](#rand) 🟢
-- [round](#round) 🟢
-- [sign](#sign) 🟢
-- [sin](#sin) 🟢
-- [sqrt](#sqrt) 🟢
-- [tan](#tan) 🟢
-- [truncate](#truncate) 🟢
+- [abs](#abs)
+- [acos](#acos)
+- [asin](#asin)
+- [atan](#atan)
+- [ceil](#ceil)
+- [ceiling](#ceiling)
+- [conv](#conv)
+- [cos](#cos)
+- [cot](#cot)
+- [degrees](#degrees)
+- [exp](#exp)
+- [floor](#floor)
+- [ln](#ln)
+- [log](#log)
+- [log2](#log2)
+- [log10](#log10)
+- [mod](#mod)
+- [pi](#pi)
+- [pow](#pow)
+- [power](#power)
+- [radians](#radians)
+- [rand](#rand)
+- [round](#round)
+- [sign](#sign)
+- [sin](#sin)
+- [sqrt](#sqrt)
+- [tan](#tan)
+- [truncate](#truncate)
 
 ### date and time
 
 > All date and time formats are compatible with
 > the [`strftime`](https://en.cppreference.com/w/cpp/chrono/c/strftime) function.
 
-- [adddate](#adddate) 🟢
-- [addtime](#addtime) 🟢
-- [curdate](#curdate) 🟢
-- [current_date](#current_date) 🟢
-- [current_time](#current_time) 🟢
-- [current_timestamp](#current_timestamp) 🟢
-- [curtime](#curtime) 🟢
-- [date](#date) 🟢
-- [datediff](#datediff) 🟢
-- [date_add](#date_add) 🟢
-- [date_format](#date_format) 🟢
-- [date_sub](#date_sub) 🟢
-- [day](#day) 🟢
-- [dayname](#dayname) 🟢
-- [dayofmonth](#dayofmonth) 🟢
-- [dayofweek](#dayofweek) 🟢
-- [dayofyear](#dayofyear) 🟢
-- [from_unixtime](#from_unixtime) 🟢
-- [hour](#hour) 🟢
-- [last_day](#last_day) 🟢
-- [localtime](#localtime) 🟢
-- [localtimestamp](#localtimestamp) 🟢
-- [makedate](#makedate) 🟢
-- [maketime](#maketime) 🟢
-- [minute](#minute) 🟢
-- [month](#month) 🟢
-- [monthname](#monthname) 🟢
-- [now](#now) 🟢
-- [quarter](#quarter) 🟢
-- [second](#second) 🟢
-- [sec_to_time](#sec_to_time) 🟢
-- [str_to_date](#str_to_date) 🟢
-- [subdate](#subdate) 🟢
-- [subtime](#subtime) 🟢
-- [sysdate](#sysdate) 🟢
-- [time](#time) 🟢
-- [timediff](#timediff) 🟢
-- [time_to_sec](#time_to_sec) 🟢
-- [unix_timestamp](#unix_timestamp) 🟢
-- [week](#week) 🟢
-- [weekday](#weekday) 🟢
-- [weekofyear](#weekofyear) 🟢
-- [year](#year) 🟢
-- [yearweek](#yearweek) 🟢
+- [adddate](#adddate)
+- [addtime](#addtime)
+- [curdate](#curdate)
+- [current_date](#current_date)
+- [current_time](#current_time)
+- [current_timestamp](#current_timestamp)
+- [curtime](#curtime)
+- [date](#date)
+- [datediff](#datediff)
+- [date_add](#date_add)
+- [date_format](#date_format)
+- [date_sub](#date_sub)
+- [day](#day)
+- [dayname](#dayname)
+- [dayofmonth](#dayofmonth)
+- [dayofweek](#dayofweek)
+- [dayofyear](#dayofyear)
+- [from_unixtime](#from_unixtime)
+- [hour](#hour)
+- [last_day](#last_day)
+- [localtime](#localtime)
+- [localtimestamp](#localtimestamp)
+- [makedate](#makedate)
+- [maketime](#maketime)
+- [minute](#minute)
+- [month](#month)
+- [monthname](#monthname)
+- [now](#now)
+- [quarter](#quarter)
+- [second](#second)
+- [sec_to_time](#sec_to_time)
+- [str_to_date](#str_to_date)
+- [subdate](#subdate)
+- [subtime](#subtime)
+- [sysdate](#sysdate)
+- [time](#time)
+- [timediff](#timediff)
+- [time_to_sec](#time_to_sec)
+- [unix_timestamp](#unix_timestamp)
+- [week](#week)
+- [weekday](#weekday)
+- [weekofyear](#weekofyear)
+- [year](#year)
+- [yearweek](#yearweek)
 
 ### strings
 
-- [ascii](#ascii) 🟢
-- [bin](#bin) 🟢
-- [char](#char) 🟢
-- [concat](#concat) 🟢
-- [concat_ws](#concat_ws) 🟢
-- [elt](#elt) 🟢
-- [field](#field) 🟢
-- [hex](#hex) 🟢
-- [insert](#insert) 🟢
-- [instr](#instr) 🟢
-- [lcase](#lcase) 🟢
-- [left](#left) 🟢
-- [length](#length) 🟢
-- [locate](#locate) 🟢
-- [lower](#lower) 🟢
-- [lpad](#lpad) 🟢
-- [ltrim](#ltrim) 🟢
-- [mid](#mid) 🟢
-- [oct](#oct) 🟢
-- [position](#position) 🟢
-- [repeat](#repeat) 🟢
-- [replace](#replace) 🟢
-- [reverse](#reverse) 🟢
-- [right](#right) 🟢
-- [rpad](#rpad) 🟢
-- [rtrim](#rtrim) 🟢
-- [space](#space) 🟢
-- [strcmp](#strcmp) 🟢
-- [substr](#substr) 🟢
-- [substring](#substring) 🟢
-- [substring_index](#substring_index) 🟢
-- [trim](#trim) 🟢
-- [ucase](#ucase) 🟢
-- [unhex](#unhex) 🟢
-- [upper](#upper) 🟢
+- [ascii](#ascii)
+- [bin](#bin)
+- [char](#char)
+- [concat](#concat)
+- [concat_ws](#concat_ws)
+- [elt](#elt)
+- [field](#field)
+- [hex](#hex)
+- [insert](#insert)
+- [instr](#instr)
+- [lcase](#lcase)
+- [left](#left)
+- [length](#length)
+- [locate](#locate)
+- [lower](#lower)
+- [lpad](#lpad)
+- [ltrim](#ltrim)
+- [mid](#mid)
+- [oct](#oct)
+- [position](#position)
+- [repeat](#repeat)
+- [replace](#replace)
+- [reverse](#reverse)
+- [right](#right)
+- [rpad](#rpad)
+- [rtrim](#rtrim)
+- [space](#space)
+- [strcmp](#strcmp)
+- [substr](#substr)
+- [substring](#substring)
+- [substring_index](#substring_index)
+- [trim](#trim)
+- [ucase](#ucase)
+- [unhex](#unhex)
+- [upper](#upper)
 
 ### hash
 
-- [from_base64](#from_base64) 🟢
-- [md5](#md5) 🟢
-- [serial](#serial) 🟢
-- [sha](#sha) 🟢
-- [sha1](#sha1) 🟢
-- [sha2](#sha2) 🟢
-- [sha224](#sha224) 🟢
-- [sha256](#sha256) 🟢
-- [sha384](#sha384) 🟢
-- [sha512](#sha512) 🟢
-- [to_base64](#to_base64) 🟢
-- [uuid](#uuid) 🟢
+- [from_base64](#from_base64)
+- [md5](#md5)
+- [serial](#serial)
+- [sha](#sha)
+- [sha1](#sha1)
+- [sha2](#sha2)
+- [sha224](#sha224)
+- [sha256](#sha256)
+- [sha384](#sha384)
+- [sha512](#sha512)
+- [to_base64](#to_base64)
+- [uuid](#uuid)
 
 ### aggregate
 
-- [avg](#avg) 🟢
-- [count](#count) 🟢
-- [group_concat](#group_concat) 🟢
-- [max](#max) 🟢
-- [min](#min) 🟢
-- [sum](#sum) 🟢
+- [avg](#avg)
+- [count](#count)
+- [group_concat](#group_concat)
+- [max](#max)
+- [min](#min)
+- [sum](#sum)
 
 ### system
 
-- [app](#app) 🟢
-- [author](#author) 🟢
-- [version](#version) 🟢
+- [app](#app)
+- [author](#author)
+- [version](#version)
 
 ### misc
 
-- [coalese](#coalesce) 🟢
-- [greatest](#greatest) 🟢
-- [isnull](#isnull) 🟢
-- [least](#least) 🟢
-- [sleep](#sleep) 🟢
+- [coalese](#coalesce)
+- [greatest](#greatest)
+- [isnull](#isnull)
+- [least](#least)
+- [sleep](#sleep)
 
 ## Function description
 
