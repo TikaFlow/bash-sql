@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
     options = parse_cmd_options(argc, argv);
     db = new Map<String, Pair<Schema *, Result *>>();
 
-    prepare_data("std");
+    import_data("std");
     handle_curd();
     if (options->interactive) {
         interactive();
@@ -248,12 +248,12 @@ void interactive() {
  * @param data data string
  * @return data of table format
  */
-void prepare_data(const String &table) {
-    var lines = split_string(options->data, '\n');
-
-    if (lines->empty()) {
+void import_data(const String &table) {
+    if (options->data.empty()) {
         return;
     }
+
+    var lines = split_string(options->data, '\n');
     // data has been trimmed so that the first line won't be empty
 
     val res = new Result();
@@ -316,6 +316,54 @@ void prepare_data(const String &table) {
     }
 
     db->insert({table, {schema, res}});
+}
+
+void export_data(const String &table, const String &file, bool with_title, bool with_line_no, char deli) {
+    if (!db->count(table)) {
+        show_error("Table not found: " + table);
+    }
+
+    val tbl = db->at(table);
+    val schema = tbl.first;
+    val res = tbl.second;
+    val columns = res->at(0)->size();
+    std::ostringstream oss;
+
+    var col_no = 1;
+    // title
+    if (with_title) {
+        if (with_line_no) {
+            oss << "__line_no" << deli;
+        }
+        for (val &col: *schema) {
+            oss << col.first;
+            if (col_no < columns) {
+                oss << deli;
+            }
+            col_no++;
+        }
+        oss << endl;
+    }
+
+    // data
+    var line_no = 1;
+    for (val &row: *res) {
+        col_no = 1;
+        if (with_line_no) {
+            oss << line_no << deli;
+        }
+        for (val &col: *row) {
+            oss << col->to_string();
+            if (col_no < columns) {
+                oss << deli;
+            }
+            col_no++;
+        }
+        oss << endl;
+        line_no++;
+    }
+
+    save_string_to_file(file, oss.str());
 }
 
 /**

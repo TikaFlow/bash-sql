@@ -251,7 +251,9 @@ from std where col2 not like 'PID';"
 
 - [app](#app)
 - [author](#author)
+- [export](#export)
 - [get](#get)
+- [import](#import)
 - [set](#set)
 - [unset](#unset)
 - [version](#version)
@@ -578,6 +580,19 @@ The inverse of this function is `LOG()` (using a single argument only) or `LN()`
 
 If `X` is NULL, this function returns NULL.
 
+### export
+
+> prototype: export(`table_name`, `file_path`, `[with_title]`, `[with_line_no]`, `[delimiter]`)
+
+Exports a table to a CSV file.
+The `table_name` is the name of the table to export.
+The `file_path` is the path to the file to export to.
+The `with_title` parameter determines whether the first row of the file contains column names,
+defaults to false.
+The `with_line_no` parameter determines whether the first column of the file contains line numbers,
+defaults to false.
+The `delimiter` parameter determines the delimiter used in the file, defaults to ','.
+
 ### field
 
 > prototype: field(`str`, `str1`, `str2`, ...)
@@ -665,6 +680,20 @@ Returns `true_value` if `condition` is true, otherwise returns `false_value`.
 
 Returns `expr2` if `expr1` is NULL, otherwise returns `expr1`.
 This is the same as the `COALESCE()` function with two arguments.
+
+### import
+
+> prototype: import(`table_name`, `file_path`, `[with_title]`, `[columns]`, `[delimiter]`)
+
+Imports data from a file into a table.
+The file is expected to be in CSV format.
+The `table_name` is the name of the table to import the data into.
+The `file_path` is the path to the file to import.
+The `with_title` parameter determines whether the first row of the file contains column names,
+defaults to false.
+The `columns` parameter determines the column count of the file,
+if omitted the column count is determined automatically.
+The `delimiter` parameter determines the delimiter used in the file, defaults to '\\s+'.
 
 ### insert
 

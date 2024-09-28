@@ -656,7 +656,7 @@ Result *apply_create(CreateStatement *stmt) {
             schema->emplace_back(as, type);
         }
         db->insert({stmt->name, {schema, table}});
-        res_str = "Done.";
+        res_str = "Create success.";
     }
 
     row->emplace_back(new Cell(res_str));

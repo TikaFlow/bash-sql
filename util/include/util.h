@@ -36,6 +36,8 @@ namespace util {
 
     String read_file_to_string(const String &filename);
 
+    void save_string_to_file(const String &filename, const String &content);
+
     bool is_integer(const String &str);
 
     bool is_double(const String &str);

@@ -99,6 +99,15 @@ namespace util {
         return trim(content);
     }
 
+    void save_string_to_file(const String &filename, const String &content) {
+        std::ofstream file(filename);
+        if (!file.is_open()) {
+            show_error("Unable to open file: " + filename);
+        }
+
+        file << content;
+    }
+
     bool is_integer(const String &str) {
         std::istringstream iss(str);
         long value;

@@ -21,7 +21,9 @@ void handle_curd();
 
 void interactive();
 
-void prepare_data(const String &table);
+void import_data(const String &table);
+
+void export_data(const String &table, const String &file, bool with_title, bool with_line_no, char deli);
 
 void print_data(Result *data, const String &name);
 
