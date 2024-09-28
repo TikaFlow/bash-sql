@@ -41,6 +41,11 @@ static void init_lexer() {
     KEYWORD.insert({"is", T_IS});
     KEYWORD.insert({"null", T_NULL});
     KEYWORD.insert({"with", T_WITH});
+    KEYWORD.insert({"create", T_CREATE});
+    KEYWORD.insert({"table", T_TABLE});
+    KEYWORD.insert({"drop", T_DROP});
+    KEYWORD.insert({"show", T_SHOW});
+    KEYWORD.insert({"describe", T_DESCRIBE});
 
     DESC.insert({T_EOF, "EOF"});
     DESC.insert({T_PLUS, "+"});

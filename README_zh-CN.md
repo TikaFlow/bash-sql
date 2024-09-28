@@ -59,12 +59,16 @@ sql [选项] [查询语句]
 - `-d`, `--delimiter=DELIMITER`：指定字符作为字段分隔符。
 - `-c`, `--columns=COLUMNS`：指定数据源的列数。
 
-## 查询语句
+## SQL语句
 
-查询语句是类SQL的select句型：
+支持的语句：
 
 ```
-[WITH] select {columns} [FROM] [WHERE] [GROUP BY] [ORDER BY] [LIMITS]
+create: CREATE TABLE {table_name} AS {select}
+```
+
+```
+select: [WITH] select {columns} [FROM] [WHERE] [GROUP BY] [ORDER BY] [LIMITS]
 ```
 
 > 关键字和函数不区分大小写。

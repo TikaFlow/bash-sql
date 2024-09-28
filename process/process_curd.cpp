@@ -633,23 +633,51 @@ static Map<String, Result *> *apply_with(Vector<WithNode> *with) {
 }
 
 /**
- * Apply one query to the data
- * @param query the query AST
- * @param data the origin data to be processed, not included the title
- * @param col_count the column count of the data
- * @param d the delimiter of the data, default is "\\s+"
- * @return the processed data
+ * apply CREATE statement
+ * @param stmt
+ * @return
  */
-Result *apply_read(SelectStatement *query, const String &data, int col_count, char d) {
-    if (!query) {
-        return null;
-    }
-    if (data.empty() && !query->tableless()) {
-        show_error("Data is empty, but query is not tableless");
+Result *apply_create(CreateStatement *stmt) {
+    val res = new Result();
+    val row = new Row();
+    res->emplace_back(row);
+    var res_str = String();
+
+    if (db->count(stmt->name)) {
+        res_str = "Table already exists: " + stmt->name;
+    } else {
+        val table = apply_read(stmt->stmt_r);
+        val schema = new Schema();
+        val select = stmt->stmt_r->select;
+        val row0 = table->at(0);
+        for (int i = 0; i < select->size(); ++i) {
+            val as = select->at(i).as;
+            val type = row0->at(i)->type;
+            schema->emplace_back(as, type);
+        }
+        db->insert({stmt->name, {schema, table}});
+        res_str = "Done.";
     }
 
-    val with_data = apply_with(query->with);
-    val res = apply_stmt(query, with_data);
+    row->emplace_back(new Cell(res_str));
+    return res;
+}
+
+/**
+ * Apply SELECT statement to the data
+ * @param stmt the stmt AST
+ * @return the processed data
+ */
+Result *apply_read(SelectStatement *stmt) {
+    if (!stmt) {
+        return null;
+    }
+    if (options->data.empty() && !stmt->tableless()) {
+        show_error("Data is empty, but stmt is not tableless");
+    }
+
+    val with_data = apply_with(stmt->with);
+    val res = apply_stmt(stmt, with_data);
 
     // free with_data
     for (val &result: *with_data) {

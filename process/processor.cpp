@@ -13,12 +13,18 @@
  * @return the processed data
  */
 Result *process(Statement stmt) {
+    Result *res = null;
+
     switch (stmt.type) {
+        case S_CREATE:
+            res = apply_create(stmt.stmt_c);
+            break;
         case S_SELECT:
-            return apply_read(stmt.stmt_r, options->data, options->columns, options->delimiter);
+            res = apply_read(stmt.stmt_r);
+            break;
         default:
             show_error("Unsupported statement type");
     }
 
-    return null; // make compiler happy
+    return res; // make compiler happy
 }

@@ -196,11 +196,21 @@ void handle_curd() {
         return;
     }
 
-    val query = parse(tokens);
+    var stmt = parse(tokens);
+    val result = process(stmt);
 
-    val result = process(query);
+    switch (stmt.type) {
+        case S_CREATE:
+            print_data(result, stmt.stmt_c->name);
+            break;
+        case S_SELECT:
+            print_data(result, stmt.stmt_r->select);
+            break;
+        default:
+            break;
+    }
 
-    print_data(result, query.stmt_r->select);
+    stmt.release();
 }
 
 /**
@@ -308,18 +318,66 @@ void prepare_data(const String &table) {
     db->insert({table, {schema, res}});
 }
 
-void static print_dashes(Vector<int> &cw, size_t size) {
+/**
+ * print dashes line
+ * @param width column width
+ */
+static void print_dashes(int width) {
     if (options->line_no) {
         cout << "+" << setw(NO_LEN) << std::right << setfill('-') << "" << "-";
     }
-    for (var i = 0; i < size; i++) {
+    cout << "+-" << setw(width) << std::right << setfill('-') << "" << "-";
+    cout << "+" << endl;
+}
+
+/**
+ * print dashes line
+ * @param cw column width
+ * @param count column count
+ */
+static void print_dashes(Vector<int> &cw, size_t count) {
+    if (options->line_no) {
+        cout << "+" << setw(NO_LEN) << std::right << setfill('-') << "" << "-";
+    }
+    for (var i = 0; i < count; i++) {
         cout << "+-" << setw(cw.at(i)) << std::right << setfill('-') << "" << "-";
     }
     cout << "+" << endl;
 }
 
 /**
- * Print data
+ * print result of create table
+ * @param data
+ */
+void print_data(Result *data, const String &name) {
+    val res = data->at(0)->at(0)->to_string();
+    val title = "create " + name;
+    // column width
+    val cw = (int) (res.length() > title.length() ? res.length() : title.length());
+
+    // title
+    print_dashes(cw);
+    if (options->line_no) {
+        cout << "| " << setw(NO_LEN) << std::right << setfill(' ') << "  No ";
+    }
+    cout << "| " << setw(cw) << std::right << setfill(' ') << title << " ";
+    cout << "|" << endl;
+    print_dashes(cw);
+
+    // data
+    val line_no = 1;
+    if (options->line_no) {
+        cout << "| " << setw(NO_LEN) << std::left << setfill(' ') << line_no;
+    }
+    cout << "| " << setw(cw) << std::right << setfill(' ') << res << " ";
+    cout << "|" << endl;
+    print_dashes(cw);
+
+    cout << endl << OK_MSG << flush;
+}
+
+/**
+ * print result of select query
  * @param data data
  * @param select select nodes
  */

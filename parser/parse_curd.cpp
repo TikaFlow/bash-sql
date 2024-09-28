@@ -22,8 +22,6 @@ static Map<String, Schema *> TABLES;
 
 static ASTNode *expression();
 
-static inline void release_node(ASTNode *&node);
-
 /**
  * peek one token
  * @param accept_eof true if return null is accepted
@@ -80,7 +78,7 @@ static Token *match(TokenType type, const String &what) {
 /**
  * initialize the std table
  */
-static void init_parser(Vector<Token *> *tokens) {
+void init_parser(Vector<Token *> *tokens) {
     TOKENS = tokens;
     INDEX = 0;
     TABLES.clear();
@@ -558,26 +556,6 @@ static void add_alias(const String &alias) {
     }
 
     ALIAS.insert({name, 1}); // 1 is dummy
-}
-
-/**
- * release the memory of AST node
- * @param node the node to release
- */
-static inline void release_node(ASTNode *&node) {
-    if (!node) {
-        return;
-    }
-
-    if (node->left) {
-        release_node(node->left);
-    }
-    if (node->right) {
-        release_node(node->right);
-    }
-
-    delete node;
-    node = null;
 }
 
 /**
@@ -1424,12 +1402,28 @@ static SelectStatement *parse_with() {
 }
 
 /**
- * parse SELECT statements separated by semicolon
- * @return vector of SELECT statements
+ * parse CREATE TABLE statement
+ * @return CREATE statement
  */
-Statement parse_read(Vector<Token *> *tokens) {
-    init_parser(tokens);
+Statement parse_create() {
+    match(T_CREATE, "create");
+    match(T_TABLE, "table");
+    val table_name = match(T_IDENTIFIER, "table name")->text;
+    match(T_AS, "as");
+    val select_stmt = parse_read().stmt_r;
 
+    val create_stmt = new CreateStatement();
+    create_stmt->name = table_name;
+    create_stmt->stmt_r = select_stmt;
+
+    return Statement{.type = S_CREATE, .stmt_c = create_stmt};
+}
+
+/**
+ * parse SELECT statement
+ * @return SELECT statement
+ */
+Statement parse_read() {
     SelectStatement *stmt;
 
     var tk = pop();
@@ -1441,5 +1435,5 @@ Statement parse_read(Vector<Token *> *tokens) {
 
     match(T_SEMICOLON, "semicolon at the end of sql statement");
 
-    return Statement{S_SELECT, stmt};
+    return Statement{.type = S_SELECT, .stmt_r = stmt};
 }

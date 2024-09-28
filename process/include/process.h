@@ -8,7 +8,9 @@
 #include "defs.h"
 #include "funcs.h"
 
-Result *apply_read(SelectStatement *query, const String &data, int col_count, char d);
+Result *apply_create(CreateStatement *stmt);
+
+Result *apply_read(SelectStatement *stmt);
 
 Result *process(Statement stmt);
 

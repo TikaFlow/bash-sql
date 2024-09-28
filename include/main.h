@@ -23,6 +23,8 @@ void interactive();
 
 void prepare_data(const String &table);
 
+void print_data(Result *data, const String &name);
+
 void print_data(Result *data, Vector<SelectNode> *select);
 
 #endif //BASH_SQL_MAIN_H

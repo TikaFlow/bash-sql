@@ -61,12 +61,16 @@ sql [OPTION] [QUERIES]
 - `-d`, `--delimiter=DELIMITER`: Use DELIMITER as field delimiter.
 - `-c`, `--columns=COLUMNS`: Use COLUMNS as number of columns.
 
-## Queries
+## Statements
 
-Queries are SQL-like select statements:
+Supported statements:
 
 ```
-[WITH] select {columns} [FROM] [WHERE] [GROUP BY] [ORDER BY] [LIMITS]
+create: CREATE TABLE {table_name} AS {select}
+```
+
+```
+select: [WITH] select {columns} [FROM] [WHERE] [GROUP BY] [ORDER BY] [LIMITS]
 ```
 
 > Keywords and functions are case-insensitive.

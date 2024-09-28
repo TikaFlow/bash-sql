@@ -7,7 +7,13 @@
 
 #include "lexer.h"
 
-Statement parse_read(Vector<Token *> *tokens);
+void init_parser(Vector<Token *> *tokens);
+
+void release_node(ASTNode *&node);
+
+Statement parse_create();
+
+Statement parse_read();
 
 Statement parse(Vector<Token *> *tokens);
 

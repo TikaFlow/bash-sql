@@ -16,6 +16,7 @@ typedef enum {
     T_SELECT, T_AS, T_FROM, T_JOIN, T_ON, T_WHERE, T_TRUE, T_FALSE,
     T_GROUP, T_BY, T_ORDER, T_ASC, T_DESC, T_IN, T_OFFSET, T_LIMIT,
     T_AND, T_OR, T_NOT, T_LIKE, T_IS, T_NULL, T_WITH,
+    T_CREATE, T_TABLE, T_DROP, T_SHOW, T_DESCRIBE,
 } TokenType;
 
 typedef enum {
@@ -108,6 +109,13 @@ struct LimitNode {
     int count;
 };
 
+struct CreateStatement {
+    String name;
+    SelectStatement *stmt_r;
+
+    void release();
+};
+
 /**
  * select statement
  * @note writing order: with -> select -> from -> where -> group -> order -> limit
@@ -134,13 +142,18 @@ struct SelectStatement {
     bool tableless_select() const;
 
     bool tableless() const;
+
+    void release();
 };
 
 struct Statement {
     StatementType type;
     union {
+        CreateStatement *stmt_c;
         SelectStatement *stmt_r;
     };
+
+    void release();
 };
 
 struct ProgramOptions {
