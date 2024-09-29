@@ -12,11 +12,13 @@
 Result *process(const Statement &stmt) {
     switch (stmt.type) {
         case S_CREATE:
-            return apply_create(stmt.name, stmt.stmt_r);
+            return apply_create(stmt.name, stmt.stmt_select);
         case S_SELECT:
-            return apply_read(stmt.stmt_r);
+            return apply_read(stmt.stmt_select);
+        case S_DROP:
+            return apply_drop(stmt.name);
         case S_DELETE:
-            return apply_delete(stmt.name);
+            return apply_delete(stmt.stmt_delete);
         case S_DESCRIBE:
             return apply_describe(stmt.name);
         case S_SHOW:

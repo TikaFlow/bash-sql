@@ -693,11 +693,11 @@ Result *apply_read(SelectStatement *stmt) {
 }
 
 /**
- * apply DELETE statement
+ * apply DROP statement
  * @param name table name
- * @return result of delete statement
+ * @return result of drop statement
  */
-Result *apply_delete(const String &name) {
+Result *apply_drop(const String &name) {
     if (!db->count(name)) {
         show_error("Table not found: " + name);
     }
@@ -709,6 +709,32 @@ Result *apply_delete(const String &name) {
     val res = new Result();
     val row = new Row();
     row->emplace_back(new Cell("Delete success."));
+    res->emplace_back(row);
+    return res;
+}
+
+/**
+ * apply DELETE statement
+ * @param stmt delete statement
+ * @return result of delete statement
+ */
+Result *apply_delete(DeleteStatement *stmt) {
+    val from = db->at(stmt->from->text).second;
+    var size = from->size();
+    for (var i = 0; i < from->size();) {
+        var row = from->at(i);
+        if (is_satisfy(row, stmt->where)) {
+            free_row(row);
+            from->erase(from->begin() + i);
+            continue;
+        }
+        i++;
+    }
+    size -= from->size();
+
+    val res = new Result();
+    val row = new Row();
+    row->emplace_back(new Cell("Delete " + std::to_string(size) + " rows."));
     res->emplace_back(row);
     return res;
 }

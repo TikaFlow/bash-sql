@@ -82,6 +82,7 @@ void init_parser(Vector<Token *> *tokens) {
     TOKENS = tokens;
     INDEX = 0;
     TABLES.clear();
+    TABLES_USED.clear();
 
     for (val &table: *db) {
         TABLES.insert({table.first, table.second.first});
@@ -94,7 +95,6 @@ void init_parser(Vector<Token *> *tokens) {
 static void stmt_start() {
     ALIAS.clear();
     SELECTS = new Schema();
-    TABLES_USED.clear();
 }
 
 /**
@@ -1164,7 +1164,7 @@ static Pair<ASTNode *, TableSet *> parse_from() {
     ASTNode *join = null;
     val from = new TableSet();
     var index = 0;
-    val alias = new Map<String, int>();
+    var alias = Map<String, int>();
 
     do {
         val name = match(T_IDENTIFIER, "table name")->text;
@@ -1174,17 +1174,17 @@ static Pair<ASTNode *, TableSet *> parse_from() {
             show_error("Table " + name + " not found");
         }
         join = new ASTNode(A_JOIN, D_NONE, join, null, name);
-        alias->insert({name, 1}); // 1 is meaningless
+        alias.insert({name, 1}); // 1 is meaningless
 
         if ((tk = peek())->type == T_AS || tk->type == T_IDENTIFIER) {
             if (tk->type == T_AS) {
                 pop();
             }
             as = match(T_IDENTIFIER, "alias name")->text;
-            if (alias->count(as)) {
+            if (alias.count(as)) {
                 show_error("Duplicate alias name: " + as);
             }
-            alias->insert({as, 1});
+            alias.insert({as, 1});
         }
 
         val table = TABLES.at(name);
@@ -1422,9 +1422,9 @@ Statement parse_create() {
     match(T_TABLE, "table");
     val table_name = match(T_IDENTIFIER, "table name")->text;
     match(T_AS, "as");
-    val select_stmt = parse_read().stmt_r;
+    val select_stmt = parse_read().stmt_select;
 
-    return Statement{.type = S_CREATE, .stmt_r = select_stmt, .name = table_name};
+    return Statement{.type = S_CREATE, .stmt_select = select_stmt, .name = table_name};
 }
 
 /**
@@ -1443,7 +1443,20 @@ Statement parse_read() {
 
     match(T_SEMICOLON, "semicolon at the end of sql statement");
 
-    return Statement{.type = S_SELECT, .stmt_r = stmt};
+    return Statement{.type = S_SELECT, .stmt_select = stmt};
+}
+
+/**
+ * parse DROP statement
+ * @return DROP statement
+ */
+Statement parse_drop() {
+    match(T_DROP, "drop");
+    match(T_TABLE, "table");
+    val table_name = match(T_IDENTIFIER, "table name")->text;
+    match(T_SEMICOLON, "semicolon at the end of sql statement");
+
+    return Statement{.type = S_DROP, .name = table_name};
 }
 
 /**
@@ -1451,12 +1464,26 @@ Statement parse_read() {
  * @return DELETE statement
  */
 Statement parse_delete() {
-    match(T_DROP, "drop");
-    match(T_TABLE, "table");
-    val table_name = match(T_IDENTIFIER, "table name")->text;
+    match(T_DELETE, "delete");
+    match(T_FROM, "from");
+    val from_pair = parse_from();
+
+    val stmt = new DeleteStatement();
+    if (peek()->type == T_WHERE) {
+        pop();
+        stmt->where = expression();
+    } else {
+        stmt->where = new ASTNode(A_LITERAL, D_BOOL, null, null, true);
+    }
+    validate_where(from_pair.second, stmt->where);
+
+    stmt->from = from_pair.first;
+    if (stmt->from->left) {
+        show_error("Join is not supported in delete statement");
+    }
     match(T_SEMICOLON, "semicolon at the end of sql statement");
 
-    return Statement{.type = S_DELETE, .name = table_name};
+    return Statement{.type = S_DELETE, .stmt_delete = stmt};
 }
 
 /**

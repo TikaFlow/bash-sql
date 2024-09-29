@@ -46,6 +46,12 @@ static void init_lexer() {
     KEYWORD.insert({"tables", T_TABLES});
     KEYWORD.insert({"drop", T_DROP});
     KEYWORD.insert({"show", T_SHOW});
+    KEYWORD.insert({"insert", T_INSERT});
+    KEYWORD.insert({"update", T_UPDATE});
+    KEYWORD.insert({"delete", T_DELETE});
+    KEYWORD.insert({"set", T_SET});
+    KEYWORD.insert({"values", T_VALUES});
+    KEYWORD.insert({"into", T_INTO});
     KEYWORD.insert({"describe", T_DESCRIBE});
     KEYWORD.insert({"history", T_HISTORY});
 

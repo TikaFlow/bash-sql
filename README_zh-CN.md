@@ -72,6 +72,10 @@ select: [WITH] select {columns} [FROM] [WHERE] [GROUP BY] [ORDER BY] [LIMITS]
 ```
 
 ```
+delete: DELETE FROM {table_name} [WHERE]
+```
+
+```
 drop: DROP TABLE {table_name}
 ```
 

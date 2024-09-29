@@ -211,10 +211,13 @@ void handle_curd() {
             print_show(result, stmt.name);
             break;
         case S_SELECT:
-            print_read(result, stmt.stmt_r->select);
+            print_read(result, stmt.stmt_select->select);
+            break;
+        case S_DROP:
+            print_show(result, "drop");
             break;
         case S_DELETE:
-            print_show(result, "deletes");
+            print_show(result, "delete");
             break;
         case S_DESCRIBE:
             print_show(result, stmt.name);
@@ -433,9 +436,9 @@ void print_show(Result *data, const String &title) {
     // title
     print_dashes(cw);
     if (options->line_no) {
-        cout << "| " << setw(NO_LEN) << std::right << setfill(' ') << "  No ";
+        cout << "| " << setw(NO_LEN) << std::left << setfill(' ') << "  No ";
     }
-    cout << "| " << setw(cw) << std::right << setfill(' ') << title << " ";
+    cout << "| " << setw(cw) << std::left << setfill(' ') << title << " ";
     cout << "|" << endl;
     print_dashes(cw);
 
@@ -462,16 +465,14 @@ void print_show(Result *data, const String &title) {
 void print_read(Result *data, Vector<SelectNode> *select) {
     // column width
     var cw = Vector<int>();
+    for (var i = 0; i < select->size(); ++i) {
+        cw.push_back(COL_INIT_LEN);
+        if (cw.at(i) < select->at(i).as.length()) {
+            cw.at(i) = (int) select->at(i).as.length();
+        }
+    }
     for (val &row: *data) {
         for (var i = 0; i < row->size(); ++i) {
-            if (cw.size() <= i) {
-                // the first row
-                cw.push_back(COL_INIT_LEN);
-                if (cw.at(i) < select->at(i).as.length()) {
-                    cw.at(i) = (int) select->at(i).as.length();
-                }
-            }
-
             val cell_len = row->at(i)->to_string().length();
             if (cw.at(i) < cell_len) {
                 cw.at(i) = (int) cell_len;
@@ -482,12 +483,12 @@ void print_read(Result *data, Vector<SelectNode> *select) {
     // title
     print_dashes(cw, select->size());
     if (options->line_no) {
-        cout << "| " << setw(NO_LEN) << std::right << setfill(' ') << "  No ";
+        cout << "| " << setw(NO_LEN) << std::left << setfill(' ') << "  No ";
     }
     var coli = 1;
     for (var i = 0; i < select->size(); ++i) {
         val as = select->at(i).as;
-        cout << "| " << setw(cw.at(i)) << std::right << setfill(' ') <<
+        cout << "| " << setw(cw.at(i)) << std::left << setfill(' ') <<
              (as.empty() ? COL_PREFIX + to_string(coli) : as) << " ";
         coli++;
     }

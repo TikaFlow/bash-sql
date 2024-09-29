@@ -15,6 +15,8 @@ Statement parse_create();
 
 Statement parse_read();
 
+Statement parse_drop();
+
 Statement parse_delete();
 
 Statement parse_describe();

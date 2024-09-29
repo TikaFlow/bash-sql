@@ -12,7 +12,9 @@ Result *apply_create(const String &name, SelectStatement *stmt);
 
 Result *apply_read(SelectStatement *stmt);
 
-Result *apply_delete(const String &name);
+Result *apply_drop(const String &name);
+
+Result *apply_delete(DeleteStatement *stmt);
 
 Result *apply_describe(const String &name);
 

@@ -17,13 +17,14 @@ typedef enum {
     T_GROUP, T_BY, T_ORDER, T_ASC, T_DESC, T_IN, T_OFFSET, T_LIMIT,
     T_AND, T_OR, T_NOT, T_LIKE, T_IS, T_NULL, T_WITH,
     T_CREATE, T_TABLE, T_DROP, T_SHOW, T_DESCRIBE, T_TABLES,
+    T_INSERT, T_UPDATE, T_DELETE, T_SET, T_VALUES, T_INTO,
 } TokenType;
 
 typedef enum {
     S_NONE,
     S_BANG, S_HISTORY,
     S_SELECT, S_INSERT, S_UPDATE, S_DELETE, // DML
-    S_CREATE, S_DROP, S_SHOW, S_DESCRIBE, S_USE, // DDL
+    S_CREATE, S_DROP, S_SHOW, S_DESCRIBE, // DDL
 } StatementType;
 
 typedef enum {
@@ -142,10 +143,18 @@ struct SelectStatement {
     void release();
 };
 
+struct DeleteStatement {
+    ASTNode *from;
+    ASTNode *where;
+
+    void release();
+};
+
 struct Statement {
     StatementType type;
     union {
-        SelectStatement *stmt_r;
+        SelectStatement *stmt_select;
+        DeleteStatement *stmt_delete;
         int number;
     };
     String name;

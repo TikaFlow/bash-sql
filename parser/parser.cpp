@@ -8,8 +8,14 @@ void Statement::release() {
     switch (this->type) {
         case S_CREATE:
         case S_SELECT:
-            this->stmt_r->release();
-            this->stmt_r = null;
+            this->stmt_select->release();
+            delete this->stmt_select;
+            this->stmt_select = null;
+            break;
+        case S_DELETE:
+            this->stmt_delete->release();
+            delete this->stmt_delete;
+            this->stmt_delete = null;
             break;
         default:
             break;
@@ -55,6 +61,11 @@ void SelectStatement::release() {
     }
 }
 
+void DeleteStatement::release() {
+    release_node(this->from);
+    release_node(this->where);
+}
+
 /**
  * parse sql and return AST tree
  * @param sql the sql to be parsed
@@ -79,6 +90,9 @@ Statement parse(Vector<Token *> *tokens) {
             stmt = parse_read();
             break;
         case T_DROP:
+            stmt = parse_drop();
+            break;
+        case T_DELETE:
             stmt = parse_delete();
             break;
         case T_DESC:
@@ -95,7 +109,7 @@ Statement parse(Vector<Token *> *tokens) {
             stmt = parse_history();
             break;
         default:
-            stmt = {};
+            stmt = Statement{.type = S_NONE};
             show_error("Unknown SQL statement");
     }
 
