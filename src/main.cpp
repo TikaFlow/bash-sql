@@ -7,8 +7,6 @@
 #define NO_LEN 5
 #define COL_INIT_LEN 8
 #define COL_PREFIX "__col_"
-#define ERROR_MSG "1 ERROR."
-#define OK_MSG "OK."
 
 int main(int argc, char *argv[]) {
     // init_parser signal handler
@@ -21,7 +19,14 @@ int main(int argc, char *argv[]) {
     db = new Map<String, Pair<Schema *, Result *>>();
 
     import_data("std");
-    handle_curd();
+    if (!options->sql.empty()) {
+        try {
+            history.emplace_back(options->sql);
+            handle_curd();
+        } catch (std::exception &e) {
+            cout << endl << e.what() << flush;
+        }
+    }
     if (options->interactive) {
         interactive();
     }
@@ -199,6 +204,8 @@ void handle_curd() {
     var stmt = parse(tokens);
     val result = process(stmt);
 
+    bool old_config;
+
     switch (stmt.type) {
         case S_CREATE:
             print_show(result, stmt.name);
@@ -214,6 +221,11 @@ void handle_curd() {
             break;
         case S_SHOW:
             print_show(result, "tables");
+            break;
+        case S_HISTORY:
+            old_config = options->line_no;
+            print_show(result, "history");
+            options->line_no = old_config;
             break;
         default:
             break;
@@ -245,9 +257,10 @@ void interactive() {
         }
 
         try {
+            history.emplace_back(options->sql);
             handle_curd();
-        } catch (...) {
-            cout << endl << ERROR_MSG << flush;
+        } catch (std::exception &e) {
+            cout << endl << e.what() << flush;
         }
     }
 }
@@ -433,12 +446,12 @@ void print_show(Result *data, const String &title) {
         if (options->line_no) {
             cout << "| " << setw(NO_LEN) << std::left << setfill(' ') << line_no++;
         }
-        cout << "| " << setw(cw) << std::right << setfill(' ') << res->to_string() << " ";
+        cout << "| " << setw(cw) << std::left << setfill(' ') << res->to_string() << " ";
         cout << "|" << endl;
     }
     print_dashes(cw);
 
-    cout << endl << OK_MSG << flush;
+    throw std::runtime_error(OK_MSG);
 }
 
 /**
@@ -489,15 +502,16 @@ void print_read(Result *data, Vector<SelectNode> *select) {
         }
 
         for (var i = 0; i < row->size(); ++i) {
-            cout << "| " << setw(cw.at(i)) << std::right << setfill(' ')
+            cout << "| " << setw(cw.at(i)) << std::left << setfill(' ')
                  << row->at(i)->to_string() << " ";
         }
         cout << "|" << endl;
     }
     print_dashes(cw, select->size());
 
-    cout << endl << OK_MSG << flush;
+    throw std::runtime_error(OK_MSG);
 }
 
 ProgramOptions *options;
 Map<String, Pair<Schema *, Result *>> *db;
+Vector<String> history;

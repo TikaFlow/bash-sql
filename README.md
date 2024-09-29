@@ -73,6 +73,24 @@ create: CREATE TABLE {table_name} AS {select}
 select: [WITH] select {columns} [FROM] [WHERE] [GROUP BY] [ORDER BY] [LIMITS]
 ```
 
+```
+drop: DROP TABLE {table_name}
+```
+
+```
+describe: DESC|DESCRIBE {table_name}
+```
+
+```
+show: SHOW TABLES
+```
+
+```bash
+# non-SQL commands don't need semicolon at the end
+history # show history
+!n # execute history command n
+```
+
 > Keywords and functions are case-insensitive.
 
 The grammar is generally consistent with standard `SQL`, but:

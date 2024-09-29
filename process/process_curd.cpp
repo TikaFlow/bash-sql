@@ -701,6 +701,9 @@ Result *apply_delete(const String &name) {
     if (!db->count(name)) {
         show_error("Table not found: " + name);
     }
+    val table = db->at(name);
+    delete table.first;
+    free_result(table.second);
     db->erase(name);
 
     val res = new Result();
@@ -722,7 +725,7 @@ Result *apply_describe(const String &name) {
     val schema = db->at(name).first;
 
     val res = new Result();
-    for( val &field: *schema) {
+    for (val &field: *schema) {
         val row = new Row();
         row->emplace_back(new Cell(field.first));
         res->emplace_back(row);
@@ -741,6 +744,41 @@ Result *apply_show() {
     for (val &table: *db) {
         val row = new Row();
         row->emplace_back(new Cell(table.first));
+        res->emplace_back(row);
+    }
+
+    return res;
+}
+
+extern void handle_curd();
+
+/**
+ * apply BANG statement
+ * @param n history id
+ * @return result of BANG statement
+ */
+Result *apply_bang(int n) {
+    if (n < 1 || n > history.size()) {
+        show_error("Invalid history id: " + std::to_string(n));
+    }
+
+    options->sql = history.at(n - 1);
+    cout << options->sql << endl;
+    handle_curd();
+
+    return null; // make compiler happy
+}
+
+/**
+ * apply HISTORY statement
+ * @return history list
+ */
+Result *apply_history() {
+    val res = new Result();
+
+    for (val &his: history) {
+        val row = new Row();
+        row->emplace_back(new Cell(his));
         res->emplace_back(row);
     }
 

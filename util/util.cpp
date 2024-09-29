@@ -63,7 +63,7 @@ namespace util {
 
     void show_error(const String &msg) {
         cerr << "ERROR: " << msg << endl;
-        throw std::runtime_error("");
+        throw std::runtime_error(ERROR_MSG);
     }
 
     void show_warn(const String &msg) {

@@ -1459,6 +1459,10 @@ Statement parse_delete() {
     return Statement{.type = S_DELETE, .name = table_name};
 }
 
+/**
+ * parse DESCRIBE statement
+ * @return DESCRIBE statement
+ */
 Statement parse_describe() {
     var tk = pop();
     if (tk->type == T_DESC || tk->type == T_DESCRIBE) {
@@ -1471,12 +1475,30 @@ Statement parse_describe() {
     return {}; // make compiler happy
 }
 
+/**
+ * parse !n statement
+ * @return BANG statement
+ */
+Statement parse_bang() {
+    match(T_BANG, "!");
+    val num = match(T_INTEGER, "number")->integer;
+
+    return Statement{.type = S_BANG, .number = num};
+}
+
+Statement parse_history() {
+    match(T_HISTORY, "history");
+
+    return Statement{.type = S_HISTORY};
+}
+
+/**
+ * parse SHOW statement
+ * @return SHOW statement
+ */
 Statement parse_show() {
     match(T_SHOW, "show");
-    val tables = match(T_IDENTIFIER, "tables")->text;
-    if (tables != "tables") {
-        show_error("Expected tables, but got " + tables);
-    }
+    match(T_TABLES, "tables");
     match(T_SEMICOLON, "semicolon at the end of sql statement");
 
     return Statement{.type = S_SHOW};

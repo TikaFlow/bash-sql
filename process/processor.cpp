@@ -21,6 +21,10 @@ Result *process(const Statement &stmt) {
             return apply_describe(stmt.name);
         case S_SHOW:
             return apply_show();
+        case S_BANG:
+            return apply_bang(stmt.number);
+        case S_HISTORY:
+            return apply_history();
         default:
             show_error("Unsupported statement type");
             return null; // make compiler happy

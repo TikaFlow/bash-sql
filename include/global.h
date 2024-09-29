@@ -12,6 +12,8 @@
 #include <iomanip>
 
 // constants
+#define ERROR_MSG "1 ERROR."
+#define OK_MSG "OK."
 #define NONE "<null>"
 #define DUAL "<dual>"
 #define PRECISION 12

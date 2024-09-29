@@ -18,6 +18,10 @@ Result *apply_describe(const String &name);
 
 Result *apply_show();
 
+Result *apply_bang(int n);
+
+Result *apply_history();
+
 Result *process(const Statement &stmt);
 
 #endif //BASH_SQL_PROCESS_H

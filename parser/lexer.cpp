@@ -43,12 +43,15 @@ static void init_lexer() {
     KEYWORD.insert({"with", T_WITH});
     KEYWORD.insert({"create", T_CREATE});
     KEYWORD.insert({"table", T_TABLE});
+    KEYWORD.insert({"tables", T_TABLES});
     KEYWORD.insert({"drop", T_DROP});
     KEYWORD.insert({"show", T_SHOW});
     KEYWORD.insert({"describe", T_DESCRIBE});
+    KEYWORD.insert({"history", T_HISTORY});
 
     DESC.insert({T_EOF, "EOF"});
     DESC.insert({T_AT, "@"});
+    DESC.insert({T_BANG, "!"});
     DESC.insert({T_PLUS, "+"});
     DESC.insert({T_MINUS, "-"});
     DESC.insert({T_STAR, "*"});
@@ -350,9 +353,10 @@ static Token *scan() {
         case '!':
             if (next() == '=') {
                 token->type = T_NE2;
-            } else {
-                show_error("Invalid character: " + String(1, c));
+                break;
             }
+            prev(c);
+            token->type = T_BANG;
             break;
         case '(':
             token->type = T_LPAREN;

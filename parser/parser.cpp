@@ -88,6 +88,12 @@ Statement parse(Vector<Token *> *tokens) {
         case T_SHOW:
             stmt = parse_show();
             break;
+        case T_BANG:
+            stmt = parse_bang();
+            break;
+        case T_HISTORY:
+            stmt = parse_history();
+            break;
         default:
             stmt = {};
             show_error("Unknown SQL statement");

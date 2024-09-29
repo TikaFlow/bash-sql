@@ -8,7 +8,7 @@
 #include "global.h"
 
 typedef enum {
-    T_EOF, T_AT,
+    T_EOF, T_AT, T_BANG, T_HISTORY,
     T_PLUS, T_MINUS, T_STAR, T_SLASH,
     T_EQ, T_NE1, T_NE2, T_LT, T_GT, T_LE, T_GE,
     T_LPAREN, T_RPAREN, T_COMMA, T_SEMICOLON,
@@ -16,11 +16,12 @@ typedef enum {
     T_SELECT, T_AS, T_FROM, T_JOIN, T_ON, T_WHERE, T_TRUE, T_FALSE,
     T_GROUP, T_BY, T_ORDER, T_ASC, T_DESC, T_IN, T_OFFSET, T_LIMIT,
     T_AND, T_OR, T_NOT, T_LIKE, T_IS, T_NULL, T_WITH,
-    T_CREATE, T_TABLE, T_DROP, T_SHOW, T_DESCRIBE,
+    T_CREATE, T_TABLE, T_DROP, T_SHOW, T_DESCRIBE, T_TABLES,
 } TokenType;
 
 typedef enum {
     S_NONE,
+    S_BANG, S_HISTORY,
     S_SELECT, S_INSERT, S_UPDATE, S_DELETE, // DML
     S_CREATE, S_DROP, S_SHOW, S_DESCRIBE, S_USE, // DDL
 } StatementType;
@@ -145,6 +146,7 @@ struct Statement {
     StatementType type;
     union {
         SelectStatement *stmt_r;
+        int number;
     };
     String name;
 
@@ -171,5 +173,6 @@ using TableSet = Map<String, ColumnDesc>;
 
 extern ProgramOptions *options;
 extern Map<String, Pair<Schema *, Result *>> *db;
+extern Vector<String> history;
 
 #endif //BASH_SQL_DEFS_H

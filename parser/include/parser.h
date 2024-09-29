@@ -19,6 +19,10 @@ Statement parse_delete();
 
 Statement parse_describe();
 
+Statement parse_bang();
+
+Statement parse_history();
+
 Statement parse_show();
 
 Statement parse(Vector<Token *> *tokens);

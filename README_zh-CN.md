@@ -71,6 +71,24 @@ create: CREATE TABLE {table_name} AS {select}
 select: [WITH] select {columns} [FROM] [WHERE] [GROUP BY] [ORDER BY] [LIMITS]
 ```
 
+```
+drop: DROP TABLE {table_name}
+```
+
+```
+describe: DESC|DESCRIBE {table_name}
+```
+
+```
+show: SHOW TABLES
+```
+
+```bash
+# 非SQL语句末尾不需要分号
+history # 显示历史记录
+!n # 重复执行历史记录中第n条命令
+```
+
 > 关键字和函数不区分大小写。
 
 语法与标准`SQL`一致，但：
