@@ -205,19 +205,22 @@ void handle_curd() {
     val result = process(stmt);
 
     bool old_config;
+    val free_stmt = [&stmt]() {
+        stmt.release();
+    };
 
     switch (stmt.type) {
         case S_CREATE:
-            print_show(result, stmt.name);
+            print_show(result, stmt.name, free_stmt);
             break;
         case S_SELECT:
-            print_read(result, stmt.stmt_select->select);
+            print_read(result, stmt.stmt_select->select, free_stmt);
             break;
         case S_DROP:
-            print_show(result, "drop");
+            print_show(result, "drop", free_stmt);
             break;
         case S_DELETE:
-            print_show(result, "delete");
+            print_show(result, "delete", free_stmt);
             break;
         case S_DESCRIBE:
             print_show(result, stmt.name);
@@ -227,14 +230,14 @@ void handle_curd() {
             break;
         case S_HISTORY:
             old_config = options->line_no;
-            print_show(result, "history");
-            options->line_no = old_config;
+            options->line_no = true;
+            print_show(result, "history", [old_config]() {
+                options->line_no = old_config;
+            });
             break;
         default:
             break;
     }
-
-    stmt.release();
 }
 
 /**
@@ -423,7 +426,7 @@ static void print_dashes(Vector<int> &cw, size_t count) {
  * @param data data
  * @param title title
  */
-void print_show(Result *data, const String &title) {
+void print_show(Result *data, const String &title, const Function<void()> &func) {
     // column width
     var cw = (int) title.length();
     for (val &row: *data) {
@@ -454,6 +457,9 @@ void print_show(Result *data, const String &title) {
     }
     print_dashes(cw);
 
+    if (func) {
+        func();
+    }
     throw std::runtime_error(OK_MSG);
 }
 
@@ -462,7 +468,7 @@ void print_show(Result *data, const String &title) {
  * @param data data
  * @param select select nodes
  */
-void print_read(Result *data, Vector<SelectNode> *select) {
+void print_read(Result *data, Vector<SelectNode> *select, const Function<void()> &func) {
     // column width
     var cw = Vector<int>();
     for (var i = 0; i < select->size(); ++i) {
@@ -510,6 +516,9 @@ void print_read(Result *data, Vector<SelectNode> *select) {
     }
     print_dashes(cw, select->size());
 
+    if (func) {
+        func();
+    }
     throw std::runtime_error(OK_MSG);
 }
 

@@ -4,7 +4,7 @@
 
 #include "funcs.h"
 
-Map<String, Function> FUNCTIONS;
+Map<String, FunctionDesc> FUNCTIONS;
 
 /**
  * show error when argument number is wrong at function name

@@ -25,8 +25,8 @@ void import_data(const String &table);
 
 void export_data(const String &table, const String &file, bool with_title, bool with_line_no, char deli);
 
-void print_read(Result *data, Vector<SelectNode> *select);
+void print_read(Result *data, Vector<SelectNode> *select, const Function<void()> &func = null);
 
-void print_show(Result *data, const String &title);
+void print_show(Result *data, const String &title, const Function<void()> &func = null);
 
 #endif //BASH_SQL_MAIN_H

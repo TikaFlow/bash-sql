@@ -21,14 +21,14 @@ typedef enum {
     F_AGGREGATE, F_NORMAL,
 } FuncType;
 
-struct Function {
+struct FunctionDesc {
     DataType dtype;
     FuncType ftype;
 
     Cell *(*pointer)(Row *);
 };
 
-extern Map<String, Function> FUNCTIONS;
+extern Map<String, FunctionDesc> FUNCTIONS;
 
 void check_arg_nums(Row *row, const String &func_name, int min, int max = -1);
 

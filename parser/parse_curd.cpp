@@ -386,11 +386,11 @@ static ASTNode *in_list(ASTNode *exp) {
 }
 
 /**
- * parse LIKE clause
+ * parse LIKE/REGEXP clause
  * @param exp expression to compare with
  * @return ast node of the LIKE clause
  */
-static ASTNode *parse_like(ASTNode *exp) {
+static ASTNode *parse_like(ASTNode *exp, ASTType atype) {
     if (peek()->type == T_NULL) {
         pop();
         release_node(exp);
@@ -401,7 +401,7 @@ static ASTNode *parse_like(ASTNode *exp) {
     val tk = match(T_STRING, "string literal");
     var value = new ASTNode(A_LITERAL, D_STRING, null, null, tk->text);
 
-    return new ASTNode(A_LIKE, D_BOOL, exp, value);
+    return new ASTNode(atype, D_BOOL, exp, value);
 }
 
 /**
@@ -443,7 +443,7 @@ static ASTNode *logical_factor() {
         }
 
         left = new ASTNode(atype, D_BOOL, left, right);
-    } else if (tk->type == T_NOT || tk->type == T_IN || tk->type == T_LIKE) {
+    } else if (tk->type == T_NOT || tk->type == T_IN || tk->type == T_LIKE || tk->type == T_REGEXP) {
 
         val is_not = tk->type == T_NOT;
         if (is_not) {
@@ -453,7 +453,9 @@ static ASTNode *logical_factor() {
         if (tk->type == T_IN) {
             left = in_list(left);
         } else if (tk->type == T_LIKE) {
-            left = parse_like(left);
+            left = parse_like(left, A_LIKE);
+        } else if (tk->type == T_REGEXP) {
+            left = parse_like(left, A_REGEXP);
         } else {
             show_error("Expected IN or LIKE after NOT");
         }
@@ -596,7 +598,7 @@ static void constant_fold(ASTNode *node) {
     }
 
     val cmp = compare_number(left->number, right ? right->number : 0);
-    switch (node->atype) { // never be A_LIKE
+    switch (node->atype) {
         /*
          * A_ADD, A_SUB, A_MUL, A_DIV,
          * A_EQ, A_NE, A_LT, A_GT, A_LE, A_GE, A_AND, A_OR,

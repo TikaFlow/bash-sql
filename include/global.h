@@ -34,6 +34,8 @@ using Map = std::map<K, V>;
 template<typename T1, typename T2>
 using Pair = std::pair<T1, T2>;
 using Regex = std::regex;
+template<typename F>
+using Function = std::function<F>;
 
 // function
 using std::stoi;

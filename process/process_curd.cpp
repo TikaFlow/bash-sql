@@ -280,34 +280,39 @@ static void calc_logic(Cell *cell, Cell *left, Cell *right, ASTType atype) {
 }
 
 /**
- * evaluate like expression
+ * evaluate like/regexp expression
  * @param cell result cell
  * @param data data cell
  * @param like like cell
  */
-static void calc_like(Cell *cell, Cell *data, Cell *like) {
+static void calc_like(Cell *cell, Cell *data, Cell *like, ASTType atype) {
     if (data->type == D_NULL || like->type == D_NULL) {
         cell->type = D_NULL;
         return;
     }
 
-    var reg_exp = String("^");
-    var esc = false;
-    for (var c: like->text) {
-        if (esc) {
-            reg_exp += String(1, c);
-            esc = false;
-        } else if (c == '\\') {
-            esc = true;
-        } else if (c == '%') {
-            reg_exp += ".*";
-        } else if (c == '_') {
-            reg_exp += ".";
-        } else {
-            reg_exp += c;
+    var reg_exp = String();
+    if (atype == A_LIKE) {
+        reg_exp += "^";
+        var esc = false;
+        for (var c: like->text) {
+            if (esc) {
+                reg_exp += String(1, c);
+                esc = false;
+            } else if (c == '\\') {
+                esc = true;
+            } else if (c == '%') {
+                reg_exp += ".*";
+            } else if (c == '_') {
+                reg_exp += ".";
+            } else {
+                reg_exp += c;
+            }
         }
+        reg_exp += "$";
+    } else {
+        reg_exp = like->text;
     }
-    reg_exp += "$";
 
     val reg = Regex(reg_exp);
     cell->type = D_BOOL;
@@ -372,7 +377,8 @@ static Cell *evaluate(Result *data, ASTNode *exp) {
             calc_logic(cell, left, right, exp->atype);
             break;
         case A_LIKE:
-            calc_like(cell, left, right);
+        case A_REGEXP:
+            calc_like(cell, left, right, exp->atype);
             break;
         default:
             break; // make compiler happy
@@ -708,7 +714,7 @@ Result *apply_drop(const String &name) {
 
     val res = new Result();
     val row = new Row();
-    row->emplace_back(new Cell("Delete success."));
+    row->emplace_back(new Cell("Drop success."));
     res->emplace_back(row);
     return res;
 }
@@ -734,7 +740,7 @@ Result *apply_delete(DeleteStatement *stmt) {
 
     val res = new Result();
     val row = new Row();
-    row->emplace_back(new Cell("Delete " + std::to_string(size) + " rows."));
+    row->emplace_back(new Cell("Delete " + std::to_string(size) + " row(s)."));
     res->emplace_back(row);
     return res;
 }

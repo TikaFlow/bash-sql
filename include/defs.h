@@ -15,7 +15,7 @@ typedef enum {
     T_INTEGER, T_REAL, T_STRING, T_IDENTIFIER,
     T_SELECT, T_AS, T_FROM, T_JOIN, T_ON, T_WHERE, T_TRUE, T_FALSE,
     T_GROUP, T_BY, T_ORDER, T_ASC, T_DESC, T_IN, T_OFFSET, T_LIMIT,
-    T_AND, T_OR, T_NOT, T_LIKE, T_IS, T_NULL, T_WITH,
+    T_AND, T_OR, T_NOT, T_LIKE, T_IS, T_NULL, T_WITH, T_REGEXP,
     T_CREATE, T_TABLE, T_DROP, T_SHOW, T_DESCRIBE, T_TABLES,
     T_INSERT, T_UPDATE, T_DELETE, T_SET, T_VALUES, T_INTO,
 } TokenType;
@@ -38,7 +38,7 @@ typedef enum {
     A_FUNC_CALL, A_PARAM, A_LITERAL, A_COLUMN,
     A_ADD, A_SUB, A_MUL, A_DIV,
     A_EQ, A_NE, A_LT, A_GT, A_LE, A_GE, A_AND, A_OR,
-    A_NEGATE, A_NOT, A_ISNULL, A_LIKE, // unary operator
+    A_NEGATE, A_NOT, A_ISNULL, A_LIKE, A_REGEXP, // unary operator
 } ASTType;
 
 struct Token {
