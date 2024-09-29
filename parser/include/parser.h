@@ -13,6 +13,10 @@ void release_node(ASTNode *&node);
 
 Statement parse_create();
 
+Statement parse_insert();
+
+Statement parse_update();
+
 Statement parse_read();
 
 Statement parse_drop();

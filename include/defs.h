@@ -150,11 +150,20 @@ struct DeleteStatement {
     void release();
 };
 
+struct UpdateStatement {
+    ASTNode *from;
+    Vector<ASTNode *> *set;
+    ASTNode *where;
+
+    void release();
+};
+
 struct Statement {
     StatementType type;
     union {
         SelectStatement *stmt_select;
         DeleteStatement *stmt_delete;
+        UpdateStatement *stmt_update;
         int number;
     };
     String name;

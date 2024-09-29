@@ -671,6 +671,34 @@ Result *apply_create(const String &name, SelectStatement *stmt_r) {
 }
 
 /**
+ * apply UPDATE statement
+ * @param stmt update statement
+ * @return result of update statement
+ */
+Result *apply_update(UpdateStatement *stmt) {
+    val from = db->at(stmt->from->text).second;
+    var size = 0;
+    for (val &row: *from) {
+        if (!stmt->where || is_satisfy(row, stmt->where)) {
+            for (val &s: *stmt->set) {
+                val col = (int) s->left->number;
+                val value = evaluate(from, s->right);
+                val old = row->at(col);
+                row->at(col) = value;
+                delete old;
+            }
+            size++;
+        }
+    }
+
+    val res = new Result();
+    val row = new Row();
+    row->emplace_back(new Cell("Update " + std::to_string(size) + " row(s)."));
+    res->emplace_back(row);
+    return res;
+}
+
+/**
  * Apply SELECT statement to the data
  * @param stmt the stmt AST
  * @return the processed data
@@ -729,7 +757,7 @@ Result *apply_delete(DeleteStatement *stmt) {
     var size = from->size();
     for (var i = 0; i < from->size();) {
         var row = from->at(i);
-        if (is_satisfy(row, stmt->where)) {
+        if (!stmt->where || is_satisfy(row, stmt->where)) {
             free_row(row);
             from->erase(from->begin() + i);
             continue;

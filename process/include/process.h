@@ -10,6 +10,10 @@
 
 Result *apply_create(const String &name, SelectStatement *stmt);
 
+// Result *apply_insert(InsertStatement *stmt);
+
+Result *apply_update(UpdateStatement *stmt);
+
 Result *apply_read(SelectStatement *stmt);
 
 Result *apply_drop(const String &name);

@@ -76,7 +76,7 @@ static Token *match(TokenType type, const String &what) {
 }
 
 /**
- * initialize the std table
+ * initialize the parser
  */
 void init_parser(Vector<Token *> *tokens) {
     TOKENS = tokens;
@@ -1099,6 +1099,20 @@ static void validate_order_by(Vector<OrderNode> *order) {
 }
 
 /**
+ * check if the SET clause is valid
+ * @param from FROM table
+ * @param set SET clause
+ */
+static void validate_set(TableSet *from, Vector<ASTNode *> *set) {
+    if (!all_of(set->begin(), set->end(), [from](ASTNode *node) {
+        check_ast(from, node);
+        return node->atype == A_EQ && node->left->atype == A_COLUMN;
+    })) {
+        show_error("SET clause must be a column = expression");
+    }
+}
+
+/**
  * check if the statement is valid
  * @param stmt the statement to be checked
  * @param after_where if we want to check clause after WHERE
@@ -1231,12 +1245,11 @@ static Pair<ASTNode *, TableSet *> from_dual() {
 }
 
 /**
- * parse GROUP BY clause
+ * parse expression list, such as GROUP BY clause, SET clause
  * @return vector of GROUP BY column expression
  */
-static Vector<ASTNode *> *parse_group_by() {
+static Vector<ASTNode *> *parse_expression_list() {
     val node = new Vector<ASTNode *>();
-    match(T_BY, "by");
 
     do {
         val col = expression();
@@ -1357,7 +1370,8 @@ static SelectStatement *parse_select_stmt(const String &name, Vector<WithNode> *
 
     if (peek()->type == T_GROUP) {
         pop();
-        stmt->group = parse_group_by();
+        match(T_BY, "by");
+        stmt->group = parse_expression_list();
     }
 
     if (peek()->type == T_ORDER) {
@@ -1429,6 +1443,35 @@ Statement parse_create() {
     return Statement{.type = S_CREATE, .stmt_select = select_stmt, .name = table_name};
 }
 
+Statement parse_insert() { return {}; }
+
+/**
+ * parse UPDATE statement
+ * @return UPDATE statement
+ */
+Statement parse_update() {
+    match(T_UPDATE, "update");
+    val from_pair = parse_from();
+    match(T_SET, "set");
+    val stmt = new UpdateStatement();
+    stmt->set = parse_expression_list();
+
+    if (peek()->type == T_WHERE) {
+        pop();
+        stmt->where = expression();
+    }
+    stmt->from = from_pair.first;
+
+    validate_set(from_pair.second, stmt->set);
+    validate_where(from_pair.second, stmt->where);
+    if (stmt->from->left) {
+        show_error("Join is not supported in update statement");
+    }
+    match(T_SEMICOLON, "semicolon at the end of sql statement");
+
+    return Statement{.type = S_UPDATE, .stmt_update = stmt};
+}
+
 /**
  * parse SELECT statement
  * @return SELECT statement
@@ -1474,12 +1517,10 @@ Statement parse_delete() {
     if (peek()->type == T_WHERE) {
         pop();
         stmt->where = expression();
-    } else {
-        stmt->where = new ASTNode(A_LITERAL, D_BOOL, null, null, true);
     }
-    validate_where(from_pair.second, stmt->where);
-
     stmt->from = from_pair.first;
+
+    validate_where(from_pair.second, stmt->where);
     if (stmt->from->left) {
         show_error("Join is not supported in delete statement");
     }

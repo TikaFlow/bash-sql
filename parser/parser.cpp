@@ -12,6 +12,16 @@ void Statement::release() {
             delete this->stmt_select;
             this->stmt_select = null;
             break;
+            // case S_INSERT:
+            //     this->stmt_insert->release();
+            //     delete this->stmt_insert;
+            //     this->stmt_insert = null;
+            //     break;
+        case S_UPDATE:
+            this->stmt_update->release();
+            delete this->stmt_update;
+            this->stmt_update = null;
+            break;
         case S_DELETE:
             this->stmt_delete->release();
             delete this->stmt_delete;
@@ -66,6 +76,17 @@ void DeleteStatement::release() {
     release_node(this->where);
 }
 
+void UpdateStatement::release() {
+    release_node(this->from);
+    release_node(this->where);
+
+    for (var &s: *this->set) {
+        release_node(s);
+    }
+    delete this->set;
+    this->set = null;
+}
+
 /**
  * parse sql and return AST tree
  * @param sql the sql to be parsed
@@ -84,6 +105,12 @@ Statement parse(Vector<Token *> *tokens) {
     switch (start->type) {
         case T_CREATE:
             stmt = parse_create();
+            break;
+        case T_INSERT:
+            stmt = parse_insert();
+            break;
+        case T_UPDATE:
+            stmt = parse_update();
             break;
         case T_WITH:
         case T_SELECT:

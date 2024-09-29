@@ -213,6 +213,12 @@ void handle_curd() {
         case S_CREATE:
             print_show(result, stmt.name, free_stmt);
             break;
+        case S_INSERT:
+            print_show(result, "insert", free_stmt);
+            break;
+        case S_UPDATE:
+            print_show(result, "update", free_stmt);
+            break;
         case S_SELECT:
             print_read(result, stmt.stmt_select->select, free_stmt);
             break;

@@ -13,6 +13,10 @@ Result *process(const Statement &stmt) {
     switch (stmt.type) {
         case S_CREATE:
             return apply_create(stmt.name, stmt.stmt_select);
+        case S_INSERT:
+            // return apply_insert(stmt.stmt_insert);
+        case S_UPDATE:
+            return apply_update(stmt.stmt_update);
         case S_SELECT:
             return apply_read(stmt.stmt_select);
         case S_DROP:
