@@ -201,10 +201,19 @@ void handle_curd() {
 
     switch (stmt.type) {
         case S_CREATE:
-            print_data(result, stmt.stmt_c->name);
+            print_show(result, stmt.name);
             break;
         case S_SELECT:
-            print_data(result, stmt.stmt_r->select);
+            print_read(result, stmt.stmt_r->select);
+            break;
+        case S_DELETE:
+            print_show(result, "deletes");
+            break;
+        case S_DESCRIBE:
+            print_show(result, stmt.name);
+            break;
+        case S_SHOW:
+            print_show(result, "tables");
             break;
         default:
             break;
@@ -394,14 +403,19 @@ static void print_dashes(Vector<int> &cw, size_t count) {
 }
 
 /**
- * print result of create table
- * @param data
+ * print result of one column
+ * @param data data
+ * @param title title
  */
-void print_data(Result *data, const String &name) {
-    val res = data->at(0)->at(0)->to_string();
-    val title = "create " + name;
+void print_show(Result *data, const String &title) {
     // column width
-    val cw = (int) (res.length() > title.length() ? res.length() : title.length());
+    var cw = (int) title.length();
+    for (val &row: *data) {
+        val len = (int) row->at(0)->text.length();
+        if (len > cw) {
+            cw = len;
+        }
+    }
 
     // title
     print_dashes(cw);
@@ -413,12 +427,15 @@ void print_data(Result *data, const String &name) {
     print_dashes(cw);
 
     // data
-    val line_no = 1;
-    if (options->line_no) {
-        cout << "| " << setw(NO_LEN) << std::left << setfill(' ') << line_no;
+    var line_no = 1;
+    for (val &row: *data) {
+        val res = row->at(0);
+        if (options->line_no) {
+            cout << "| " << setw(NO_LEN) << std::left << setfill(' ') << line_no++;
+        }
+        cout << "| " << setw(cw) << std::right << setfill(' ') << res->to_string() << " ";
+        cout << "|" << endl;
     }
-    cout << "| " << setw(cw) << std::right << setfill(' ') << res << " ";
-    cout << "|" << endl;
     print_dashes(cw);
 
     cout << endl << OK_MSG << flush;
@@ -429,7 +446,7 @@ void print_data(Result *data, const String &name) {
  * @param data data
  * @param select select nodes
  */
-void print_data(Result *data, Vector<SelectNode> *select) {
+void print_read(Result *data, Vector<SelectNode> *select) {
     // column width
     var cw = Vector<int>();
     for (val &row: *data) {

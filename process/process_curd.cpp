@@ -634,28 +634,29 @@ static Map<String, Result *> *apply_with(Vector<WithNode> *with) {
 
 /**
  * apply CREATE statement
- * @param stmt
- * @return
+ * @param name table name
+ * @param stmt_r select statement
+ * @return result of create statement
  */
-Result *apply_create(CreateStatement *stmt) {
+Result *apply_create(const String &name, SelectStatement *stmt_r) {
     val res = new Result();
     val row = new Row();
     res->emplace_back(row);
     var res_str = String();
 
-    if (db->count(stmt->name)) {
-        res_str = "Table already exists: " + stmt->name;
+    if (db->count(name)) {
+        res_str = "Table already exists: " + name;
     } else {
-        val table = apply_read(stmt->stmt_r);
+        val table = apply_read(stmt_r);
         val schema = new Schema();
-        val select = stmt->stmt_r->select;
+        val select = stmt_r->select;
         val row0 = table->at(0);
         for (int i = 0; i < select->size(); ++i) {
             val as = select->at(i).as;
             val type = row0->at(i)->type;
             schema->emplace_back(as, type);
         }
-        db->insert({stmt->name, {schema, table}});
+        db->insert({name, {schema, table}});
         res_str = "Create success.";
     }
 
@@ -687,6 +688,61 @@ Result *apply_read(SelectStatement *stmt) {
         free_result(result.second);
     }
     delete with_data;
+
+    return res;
+}
+
+/**
+ * apply DELETE statement
+ * @param name table name
+ * @return result of delete statement
+ */
+Result *apply_delete(const String &name) {
+    if (!db->count(name)) {
+        show_error("Table not found: " + name);
+    }
+    db->erase(name);
+
+    val res = new Result();
+    val row = new Row();
+    row->emplace_back(new Cell("Delete success."));
+    res->emplace_back(row);
+    return res;
+}
+
+/**
+ * apply DESCRIBE statement
+ * @param name table name
+ * @return columns of table
+ */
+Result *apply_describe(const String &name) {
+    if (!db->count(name)) {
+        show_error("Table not found: " + name);
+    }
+    val schema = db->at(name).first;
+
+    val res = new Result();
+    for( val &field: *schema) {
+        val row = new Row();
+        row->emplace_back(new Cell(field.first));
+        res->emplace_back(row);
+    }
+
+    return res;
+}
+
+/**
+ * apply SHOW statement
+ * @return tables list
+ */
+Result *apply_show() {
+    val res = new Result();
+
+    for (val &table: *db) {
+        val row = new Row();
+        row->emplace_back(new Cell(table.first));
+        res->emplace_back(row);
+    }
 
     return res;
 }

@@ -15,6 +15,12 @@ Statement parse_create();
 
 Statement parse_read();
 
+Statement parse_delete();
+
+Statement parse_describe();
+
+Statement parse_show();
+
 Statement parse(Vector<Token *> *tokens);
 
 #endif //BASH_SQL_PARSER_H

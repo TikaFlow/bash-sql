@@ -7,10 +7,6 @@
 void Statement::release() {
     switch (this->type) {
         case S_CREATE:
-            this->stmt_c->release();
-            delete this->stmt_c;
-            this->stmt_c = null;
-            break;
         case S_SELECT:
             this->stmt_r->release();
             this->stmt_r = null;
@@ -18,12 +14,6 @@ void Statement::release() {
         default:
             break;
     }
-}
-
-void CreateStatement::release() {
-    this->stmt_r->release();
-    delete this->stmt_r;
-    this->stmt_r = null;
 }
 
 void SelectStatement::release() {
@@ -87,6 +77,16 @@ Statement parse(Vector<Token *> *tokens) {
         case T_WITH:
         case T_SELECT:
             stmt = parse_read();
+            break;
+        case T_DROP:
+            stmt = parse_delete();
+            break;
+        case T_DESC:
+        case T_DESCRIBE:
+            stmt = parse_describe();
+            break;
+        case T_SHOW:
+            stmt = parse_show();
             break;
         default:
             stmt = {};

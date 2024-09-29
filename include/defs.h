@@ -111,13 +111,6 @@ struct LimitNode {
     int count;
 };
 
-struct CreateStatement {
-    String name;
-    SelectStatement *stmt_r;
-
-    void release();
-};
-
 /**
  * select statement
  * @note writing order: with -> select -> from -> where -> group -> order -> limit
@@ -151,9 +144,9 @@ struct SelectStatement {
 struct Statement {
     StatementType type;
     union {
-        CreateStatement *stmt_c;
         SelectStatement *stmt_r;
     };
+    String name;
 
     void release();
 };

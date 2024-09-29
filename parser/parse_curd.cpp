@@ -1424,11 +1424,7 @@ Statement parse_create() {
     match(T_AS, "as");
     val select_stmt = parse_read().stmt_r;
 
-    val create_stmt = new CreateStatement();
-    create_stmt->name = table_name;
-    create_stmt->stmt_r = select_stmt;
-
-    return Statement{.type = S_CREATE, .stmt_c = create_stmt};
+    return Statement{.type = S_CREATE, .stmt_r = select_stmt, .name = table_name};
 }
 
 /**
@@ -1448,4 +1444,40 @@ Statement parse_read() {
     match(T_SEMICOLON, "semicolon at the end of sql statement");
 
     return Statement{.type = S_SELECT, .stmt_r = stmt};
+}
+
+/**
+ * parse DELETE statement
+ * @return DELETE statement
+ */
+Statement parse_delete() {
+    match(T_DROP, "drop");
+    match(T_TABLE, "table");
+    val table_name = match(T_IDENTIFIER, "table name")->text;
+    match(T_SEMICOLON, "semicolon at the end of sql statement");
+
+    return Statement{.type = S_DELETE, .name = table_name};
+}
+
+Statement parse_describe() {
+    var tk = pop();
+    if (tk->type == T_DESC || tk->type == T_DESCRIBE) {
+        val table_name = match(T_IDENTIFIER, "table name")->text;
+        match(T_SEMICOLON, "semicolon at the end of sql statement");
+
+        return Statement{.type = S_DESCRIBE, .name = table_name};
+    }
+    show_error("Expected describe, but got " + tk->to_string());
+    return {}; // make compiler happy
+}
+
+Statement parse_show() {
+    match(T_SHOW, "show");
+    val tables = match(T_IDENTIFIER, "tables")->text;
+    if (tables != "tables") {
+        show_error("Expected tables, but got " + tables);
+    }
+    match(T_SEMICOLON, "semicolon at the end of sql statement");
+
+    return Statement{.type = S_SHOW};
 }

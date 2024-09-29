@@ -6,25 +6,23 @@
 
 /**
  * Apply one sql to the data
- * @param query the sql AST
- * @param data the origin data to be processed, not included the title
- * @param col_count the column count of the data
- * @param d the delimiter of the data, default is "\\s+"
+ * @param stmt the sql statement
  * @return the processed data
  */
-Result *process(Statement stmt) {
-    Result *res = null;
-
+Result *process(const Statement &stmt) {
     switch (stmt.type) {
         case S_CREATE:
-            res = apply_create(stmt.stmt_c);
-            break;
+            return apply_create(stmt.name, stmt.stmt_r);
         case S_SELECT:
-            res = apply_read(stmt.stmt_r);
-            break;
+            return apply_read(stmt.stmt_r);
+        case S_DELETE:
+            return apply_delete(stmt.name);
+        case S_DESCRIBE:
+            return apply_describe(stmt.name);
+        case S_SHOW:
+            return apply_show();
         default:
             show_error("Unsupported statement type");
+            return null; // make compiler happy
     }
-
-    return res; // make compiler happy
 }

@@ -8,10 +8,16 @@
 #include "defs.h"
 #include "funcs.h"
 
-Result *apply_create(CreateStatement *stmt);
+Result *apply_create(const String &name, SelectStatement *stmt);
 
 Result *apply_read(SelectStatement *stmt);
 
-Result *process(Statement stmt);
+Result *apply_delete(const String &name);
+
+Result *apply_describe(const String &name);
+
+Result *apply_show();
+
+Result *process(const Statement &stmt);
 
 #endif //BASH_SQL_PROCESS_H
