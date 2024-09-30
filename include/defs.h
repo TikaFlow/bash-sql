@@ -144,16 +144,31 @@ struct SelectStatement {
 };
 
 struct DeleteStatement {
-    ASTNode *from;
+    ASTNode *table;
     ASTNode *where;
 
     void release();
 };
 
 struct UpdateStatement {
-    ASTNode *from;
+    ASTNode *table;
     Vector<ASTNode *> *set;
     ASTNode *where;
+
+    void release();
+};
+
+struct InsertStatement {
+    ASTNode *table;
+    // index is the column index, value is the index in values
+    // -1 if not specified, null means all columns in order
+    Vector<int> *columns;
+    bool use_query;
+    union {
+        // data may from literal or query
+        Vector<Vector<ASTNode *> *> *values;
+        SelectStatement *query;
+    };
 
     void release();
 };
@@ -164,6 +179,7 @@ struct Statement {
         SelectStatement *stmt_select;
         DeleteStatement *stmt_delete;
         UpdateStatement *stmt_update;
+        InsertStatement *stmt_insert;
         int number;
     };
     String name;

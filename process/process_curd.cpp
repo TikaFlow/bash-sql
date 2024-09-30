@@ -72,6 +72,30 @@ static void free_result(Result *result) {
 }
 
 /**
+ * create a cell from a literal ast node
+ * @param node the ast node
+ * @return the cell
+ */
+static Cell *to_cell(ASTNode *node) {
+    if (!node || node->atype != A_LITERAL) {
+        return new Cell();
+    }
+
+    switch (node->dtype) {
+        case D_NULL:
+            return new Cell();
+        case D_BOOL:
+        case D_INTEGER:
+        case D_REAL:
+            return new Cell(node->dtype, node->number);
+        case D_STRING:
+            return new Cell(node->text);
+        default:
+            return new Cell(); // make compiler happy
+    }
+}
+
+/**
  * repair to target type of cell
  * @param cell the cell
  * @param target target type
@@ -657,7 +681,7 @@ Result *apply_create(const String &name, SelectStatement *stmt_r) {
         val schema = new Schema();
         val select = stmt_r->select;
         val row0 = table->at(0);
-        for (int i = 0; i < select->size(); ++i) {
+        for (var i = 0; i < select->size(); ++i) {
             val as = select->at(i).as;
             val type = row0->at(i)->type;
             schema->emplace_back(as, type);
@@ -671,12 +695,70 @@ Result *apply_create(const String &name, SelectStatement *stmt_r) {
 }
 
 /**
+ * apply INSERT statement
+ * @param stmt insert statement
+ * @return result of insert statement
+ */
+Result *apply_insert(InsertStatement *stmt) {
+    val table = db->at(stmt->table->text).second;
+    val columns = stmt->columns;
+
+    var count = 0;
+    if (stmt->use_query) {
+        val data = apply_read(stmt->query);
+        for (val &row: *data) {
+            if (!columns) {
+                table->emplace_back(row);
+                continue;
+            }
+            var new_row = new Row();
+            for (var idx: *columns) {
+                if (idx == -1) { // not specified
+                    new_row->emplace_back(new Cell());
+                } else {
+                    new_row->emplace_back(row->at(idx));
+                }
+            }
+            table->emplace_back(new_row);
+        }
+        count = (int) data->size();
+    } else {
+        val data = stmt->values;
+        for (val &row: *data) {
+            var new_row = new Row();
+            if (!columns) {
+                for (val &node: *row) {
+                    new_row->emplace_back(to_cell(node));
+                }
+                table->emplace_back(new_row);
+                continue;
+            }
+            for (var idx: *columns) {
+                if (idx == -1) { // not specified
+                    new_row->emplace_back(new Cell());
+                } else {
+                    new_row->emplace_back(to_cell(row->at(idx)));
+                }
+            }
+            table->emplace_back(new_row);
+        }
+        count = (int) data->size();
+    }
+
+    val res = new Result();
+    val row = new Row();
+    row->emplace_back(new Cell("Insert " + std::to_string(count) + " row(s)."));
+    res->emplace_back(row);
+    return res;
+}
+
+/**
  * apply UPDATE statement
  * @param stmt update statement
  * @return result of update statement
  */
 Result *apply_update(UpdateStatement *stmt) {
-    val from = db->at(stmt->from->text).second;
+    val from = db->at(stmt->table->text).second;
     var size = 0;
     for (val &row: *from) {
         if (!stmt->where || is_satisfy(row, stmt->where)) {
@@ -753,7 +835,7 @@ Result *apply_drop(const String &name) {
  * @return result of delete statement
  */
 Result *apply_delete(DeleteStatement *stmt) {
-    val from = db->at(stmt->from->text).second;
+    val from = db->at(stmt->table->text).second;
     var size = from->size();
     for (var i = 0; i < from->size();) {
         var row = from->at(i);

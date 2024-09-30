@@ -1117,7 +1117,7 @@ static void validate_set(TableSet *from, Vector<ASTNode *> *set) {
  * @param stmt the statement to be checked
  * @param after_where if we want to check clause after WHERE
  */
-static void validate_stmt(SelectStatement *stmt, TableSet *from_set, bool after_where = false) {
+static void validate_select_stmt(SelectStatement *stmt, TableSet *from_set, bool after_where = false) {
     if (after_where) {
         // validate group_by and order_by
         validate_group_by(from_set, stmt->select, stmt->group);
@@ -1126,6 +1126,35 @@ static void validate_stmt(SelectStatement *stmt, TableSet *from_set, bool after_
     }
     validate_select(from_set, stmt->select);
     validate_where(from_set, stmt->where);
+}
+
+/**
+ * check if the INSERT statement is valid
+ * @param stmt the statement to be checked
+ * @param col_count the number of columns in values list
+ */
+static void validate_insert_stmt(InsertStatement *stmt, int col_count) {
+    if (stmt->table->left) {
+        show_error("Join is not supported in update statement");
+    }
+
+    if (stmt->use_query) {
+        if (stmt->values->size() != col_count) {
+            show_error("Query result must have " + to_string(col_count) + " columns");
+        }
+    } else {
+        val values = stmt->values;
+        if (!all_of(values->begin(), values->end(), [col_count](Vector<ASTNode *> *value) {
+            if (value->size() != col_count) {
+                show_error("Values list must have " + to_string(col_count) + " columns");
+            }
+            return all_of(value->begin(), value->end(), [](ASTNode *node) {
+                return node->tableless();
+            });
+        })) {
+            show_error("Values list must be tableless");
+        }
+    }
 }
 
 /**
@@ -1366,7 +1395,7 @@ static SelectStatement *parse_select_stmt(const String &name, Vector<WithNode> *
         stmt->where = expression();
     }
 
-    validate_stmt(stmt, from_pair.second);
+    validate_select_stmt(stmt, from_pair.second);
 
     if (peek()->type == T_GROUP) {
         pop();
@@ -1379,7 +1408,7 @@ static SelectStatement *parse_select_stmt(const String &name, Vector<WithNode> *
         stmt->order = parse_order_by(stmt->select);
     }
 
-    validate_stmt(stmt, from_pair.second, true);
+    validate_select_stmt(stmt, from_pair.second, true);
 
     if (peek()->type == T_LIMIT) {
         pop();
@@ -1430,6 +1459,55 @@ static SelectStatement *parse_with() {
 }
 
 /**
+ * parse columns list for INSERT statement
+ * @param from table set
+ * @param col_count column count
+ * @return columns list
+ */
+static Vector<int> *parse_columns(TableSet *from, int &col_count) {
+    match(T_LPAREN, "open parentheses");
+
+    val res = new Vector<int>(col_count, -1);
+    val list = parse_expression_list();
+
+    if (list->size() > res->size()) {
+        show_error("Too many columns specified");
+    }
+    for (var i = 0; i < list->size(); i++) {
+        var col = list->at(i);
+        check_ast(from, col);
+        if (col->atype != A_COLUMN) {
+            show_error("column name expected");
+        }
+        if (res->at((int) col->number) != -1) {
+            show_error("duplicated column name");
+        }
+        res->at((int) col->number) = i;
+    }
+    col_count = (int) list->size();
+
+    match(T_RPAREN, "close parentheses");
+    return res;
+}
+
+/**
+ * parse VALUES clause
+ * @return values list
+ */
+static Vector<Vector<ASTNode *> *> *parse_values() {
+    val values = new Vector<Vector<ASTNode *> *>();
+    do {
+        match(T_LPAREN, "open parentheses");
+        values->push_back(parse_expression_list());
+        match(T_RPAREN, "close parentheses");
+    } while (pop()->type == T_COMMA);
+    unpop();
+    match(T_SEMICOLON, "semicolon at the end of sql statement");
+
+    return values;
+}
+
+/**
  * parse CREATE TABLE statement
  * @return CREATE statement
  */
@@ -1443,7 +1521,38 @@ Statement parse_create() {
     return Statement{.type = S_CREATE, .stmt_select = select_stmt, .name = table_name};
 }
 
-Statement parse_insert() { return {}; }
+/**
+ * parse INSERT statement
+ * @return INSERT statement
+ */
+Statement parse_insert() {
+    match(T_INSERT, "insert");
+    match(T_INTO, "into");
+    val from_pair = parse_from();
+    val stmt = new InsertStatement();
+    stmt->table = from_pair.first;
+
+    var tk = peek();
+    var col_count = (int) db->at(stmt->table->text).first->size();
+    if (tk->type == T_LPAREN) {
+        stmt->columns = parse_columns(from_pair.second, col_count);
+    }
+
+    if ((tk = peek())->type == T_VALUES) {
+        pop();
+        stmt->values = parse_values();
+        stmt->use_query = false;
+    } else if (tk->type == T_WITH || tk->type == T_SELECT) {
+        stmt->query = parse_read().stmt_select;
+        stmt->use_query = true;
+    } else {
+        show_error("Insert statement must have values or select clause");
+    }
+
+    validate_insert_stmt(stmt, col_count);
+
+    return Statement{.type = S_INSERT, .stmt_insert = stmt};
+}
 
 /**
  * parse UPDATE statement
@@ -1460,11 +1569,11 @@ Statement parse_update() {
         pop();
         stmt->where = expression();
     }
-    stmt->from = from_pair.first;
+    stmt->table = from_pair.first;
 
     validate_set(from_pair.second, stmt->set);
     validate_where(from_pair.second, stmt->where);
-    if (stmt->from->left) {
+    if (stmt->table->left) {
         show_error("Join is not supported in update statement");
     }
     match(T_SEMICOLON, "semicolon at the end of sql statement");
@@ -1518,10 +1627,10 @@ Statement parse_delete() {
         pop();
         stmt->where = expression();
     }
-    stmt->from = from_pair.first;
+    stmt->table = from_pair.first;
 
     validate_where(from_pair.second, stmt->where);
-    if (stmt->from->left) {
+    if (stmt->table->left) {
         show_error("Join is not supported in delete statement");
     }
     match(T_SEMICOLON, "semicolon at the end of sql statement");

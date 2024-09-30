@@ -68,7 +68,16 @@ create: CREATE TABLE {table_name} AS {select}
 ```
 
 ```
+insert: INSERT INTO {table_name}[column_list] {VALUES {values_list} | {select}}
+```
+
+```
+update: UPDATE {table_name} SET {column}={value} [WHERE]
+```
+
+```
 select: [WITH] select {columns} [FROM] [WHERE] [GROUP BY] [ORDER BY] [LIMITS]
+with: WITH {table_name} AS {select}
 ```
 
 ```

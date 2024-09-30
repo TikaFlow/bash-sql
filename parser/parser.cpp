@@ -12,11 +12,11 @@ void Statement::release() {
             delete this->stmt_select;
             this->stmt_select = null;
             break;
-            // case S_INSERT:
-            //     this->stmt_insert->release();
-            //     delete this->stmt_insert;
-            //     this->stmt_insert = null;
-            //     break;
+        case S_INSERT:
+            this->stmt_insert->release();
+            delete this->stmt_insert;
+            this->stmt_insert = null;
+            break;
         case S_UPDATE:
             this->stmt_update->release();
             delete this->stmt_update;
@@ -72,12 +72,12 @@ void SelectStatement::release() {
 }
 
 void DeleteStatement::release() {
-    release_node(this->from);
+    release_node(this->table);
     release_node(this->where);
 }
 
 void UpdateStatement::release() {
-    release_node(this->from);
+    release_node(this->table);
     release_node(this->where);
 
     for (var &s: *this->set) {
@@ -85,6 +85,30 @@ void UpdateStatement::release() {
     }
     delete this->set;
     this->set = null;
+}
+
+void InsertStatement::release() {
+    release_node(this->table);
+
+    if (this->columns) {
+        delete columns;
+        columns = null;
+    }
+
+    if (this->use_query) {
+        this->query->release();
+        delete this->query;
+        this->query = null;
+    } else {
+        for (var &r: *this->values) {
+            for (var &col: *r) {
+                release_node(col);
+            }
+            delete r;
+        }
+        delete this->values;
+        this->values = null;
+    }
 }
 
 /**

@@ -10,7 +10,7 @@
 
 Result *apply_create(const String &name, SelectStatement *stmt);
 
-// Result *apply_insert(InsertStatement *stmt);
+Result *apply_insert(InsertStatement *stmt);
 
 Result *apply_update(UpdateStatement *stmt);
 

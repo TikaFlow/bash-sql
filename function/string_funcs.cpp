@@ -399,7 +399,7 @@ static Cell *tk_reverse(Row *row) {
 
     val str = row->at(0)->to_string();
     char arr[str.length() + 1];
-    for (int i = 0; i < str.length(); ++i) {
+    for (var i = 0; i < str.length(); ++i) {
         arr[i] = str[str.length() - i - 1];
     }
     arr[str.length()] = '\0';
