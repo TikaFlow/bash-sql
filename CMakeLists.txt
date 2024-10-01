@@ -9,9 +9,10 @@ message(STATUS ">> CMake generator: ${CMAKE_GENERATOR}")
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(APP_DESCRIPTION "Using SQL-like languages to process lightweight data in bash.")
 
 # project info
-project(bash-sql LANGUAGES CXX VERSION 1.0.0 DESCRIPTION "Using SQL-like languages to process lightweight data in bash."
+project(bash-sql LANGUAGES CXX VERSION 1.0.0 DESCRIPTION ${APP_DESCRIPTION}
         HOMEPAGE_URL "https://github.com/TikaFlow/bash-sql")
 
 # header files
@@ -20,7 +21,8 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 # macros
 add_definitions(-DAPP_NAME="bash-sql")
 add_definitions(-DAUTHOR="Tika Flow")
-add_definitions(-DVERSION="1.3.0")
+add_definitions(-DVERSION="1.3.1")
+add_definitions(-DAPP_DESC=\"${APP_DESCRIPTION}\")
 
 # subdirectories
 add_subdirectory(util)

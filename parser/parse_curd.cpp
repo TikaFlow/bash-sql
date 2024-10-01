@@ -838,10 +838,11 @@ static void check_ast(TableSet *from, ASTNode *node) {
     }
 
     if (node->atype == A_COLUMN) { // if it is a column
-        if (!from->count(node->text)) {
+        val col_name = to_lower(node->text);
+        if (!from->count(col_name)) {
             show_error("Column not found: " + node->text);
         }
-        val desc = from->at(node->text);
+        val desc = from->at(col_name);
         node->dtype = desc.first; // repair type
         if (desc.second != -1) {
             node->number = desc.second; // save col index
@@ -1212,8 +1213,8 @@ static Pair<ASTNode *, TableSet *> parse_from() {
     var alias = Map<String, int>();
 
     do {
-        val name = match(T_IDENTIFIER, "table name")->text;
-        String as;
+        val name = to_lower(match(T_IDENTIFIER, "table name")->text);
+        var as = String();
 
         if (!TABLES.count(name)) {
             show_error("Table " + name + " not found");
@@ -1225,7 +1226,7 @@ static Pair<ASTNode *, TableSet *> parse_from() {
             if (tk->type == T_AS) {
                 pop();
             }
-            as = match(T_IDENTIFIER, "alias name")->text;
+            as = to_lower(match(T_IDENTIFIER, "alias name")->text);
             if (alias.count(as)) {
                 show_error("Duplicate alias name: " + as);
             }
@@ -1234,14 +1235,15 @@ static Pair<ASTNode *, TableSet *> parse_from() {
 
         val table = TABLES.at(name);
         for (val &col: *table) {
-            from->insert({name + "." + col.first, {col.second, index}});
+            val col_name = to_lower(col.first);
+            from->insert({name + "." + col_name, {col.second, index}});
             if (!as.empty()) {
-                from->insert({as + "." + col.first, {col.second, index}});
+                from->insert({as + "." + col_name, {col.second, index}});
             }
             if (from->count(col.first)) {
-                from->at(col.first) = {col.second, -1};
+                from->at(col_name) = {col.second, -1};
             } else {
-                from->insert({col.first, {col.second, index}});
+                from->insert({col_name, {col.second, index}});
             }
             index++;
         }
@@ -1607,7 +1609,7 @@ Statement parse_read() {
 Statement parse_drop() {
     match(T_DROP, "drop");
     match(T_TABLE, "table");
-    val table_name = match(T_IDENTIFIER, "table name")->text;
+    val table_name = to_lower(match(T_IDENTIFIER, "table name")->text);
     match(T_SEMICOLON, "semicolon at the end of sql statement");
 
     return Statement{.type = S_DROP, .name = table_name};
@@ -1645,7 +1647,7 @@ Statement parse_delete() {
 Statement parse_describe() {
     var tk = pop();
     if (tk->type == T_DESC || tk->type == T_DESCRIBE) {
-        val table_name = match(T_IDENTIFIER, "table name")->text;
+        val table_name = to_lower(match(T_IDENTIFIER, "table name")->text);
         match(T_SEMICOLON, "semicolon at the end of sql statement");
 
         return Statement{.type = S_DESCRIBE, .name = table_name};

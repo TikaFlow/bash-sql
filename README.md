@@ -48,7 +48,7 @@ make && make install
 sql [OPTION] [QUERIES]
 ```
 
-> Query statements must be enclosed in double quotes.
+> Query statements must be enclosed in single quotes.
 
 ## CLI options
 
@@ -101,6 +101,7 @@ show: SHOW TABLES
 ```bash
 # non-SQL commands don't need semicolon at the end
 history # show history
+
 !n # execute history command n
 ```
 
@@ -115,8 +116,7 @@ The grammar is generally consistent with standard `SQL`, but:
 ## Example
 
 ```bash
-ps -aux | sql -tlc11 "select col1 as user, col2 as pid, col9 as start, col11 as command \
-from std where col2 not like 'PID';"
+ps -aux | ./sql -tlc11 'select user, pid, `%cpu`, `%mem`, command from std limit 10;'
 ```
 
 ## Supported functions
@@ -303,15 +303,15 @@ from std where col2 not like 'PID';"
 
 > prototype: abs(`x`)
 
-Returns the absolute value of `X`, or NULL if `X` is NULL.
+Returns the absolute value of `x`, or NULL if `x` is NULL.
 
 ### acos
 
 > prototype: acos(`x`)
 
 
-Returns the arc cosine of `X`, that is, the value whose cosine is `X`.
-Returns NULL if `X` is not in the range -1 to 1, or if `X` is NULL.
+Returns the arc cosine of `x`, that is, the value whose cosine is `x`.
+Returns NULL if `x` is not in the range -1 to 1, or if `x` is NULL.
 
 ### adddate
 
@@ -324,7 +324,7 @@ ADDDATE() is a synonym for [DATE_ADD()](#date_add).
 > prototype: addtime(`date`, `expr`)
 
 Adds `expr` to `date`. `expr` is a time expression.
-Return NULL if `date` or `expr` are NULL.
+Returns NULL if `date` or `expr` are NULL.
 
 ### app
 
@@ -343,15 +343,15 @@ Returns 0 if `str` is the empty string. Returns NULL if `str` is NULL.
 
 > prototype: asin(`x`)
 
-Returns the arc sine of `X`, that is, the value whose sine is `X`.
-Returns NULL if `X` is not in the range -1 to 1, or if `X` is NULL.
+Returns the arc sine of `x`, that is, the value whose sine is `x`.
+Returns NULL if `x` is not in the range -1 to 1, or if `x` is NULL.
 
 ### atan
 
 > prototype: atan(`x`)
 
-Returns the arc tangent of `X`, that is, the value whose tangent is `X`.
-Returns NULL if `X` is NULL.
+Returns the arc tangent of `x`, that is, the value whose tangent is `x`.
+Returns NULL if `x` is NULL.
 
 ### author
 
@@ -367,9 +367,9 @@ Returns the average value of `expr`(skip NULL value). If all `expr`s are NULL, r
 
 ### bin
 
-> prototype: bin(`N`)
+> prototype: bin(`n`)
 
-Returns a string representation of the binary value of `N`. Returns NULL if `N` is NULL.
+Returns a string representation of the binary value of `n`. Returns NULL if `n` is NULL.
 
 This is equivalent to `CONV(N, 10, 2)`.
 
@@ -393,13 +393,13 @@ ceil() is a synonym for [CEILING()](#ceiling).
 
 > prototype: ceiling(`x`)
 
-Returns the smallest integer value not less than `X`. Returns NULL if `X` is NULL.
+Returns the smallest integer value not less than `x`. Returns NULL if `x` is NULL.
 
 ### char
 
-> prototype: char(`N`, ...)
+> prototype: char(`n`, ...)
 
-CHAR() interprets each argument N as an integer and returns a string
+Interprets each argument `n` as an integer and returns a string
 consisting of the characters given by the code values of those integers.
 NULL values are skipped.
 
@@ -414,7 +414,6 @@ Returns the first non-NULL value in the list, or NULL if there are no non-NULL v
 > prototype: concat(`str1`, `str2`, ...)
 
 Returns the string that results from concatenating the arguments. May have one or more arguments.
-
 Returns NULL if any argument is NULL.
 
 ### concat_ws
@@ -432,11 +431,11 @@ If the separator is NULL, the result is NULL.
 
 > prototype: conv(`n`, `from_base`, `to_base`)
 
-Returns a string representation of the number `N`, converted from base `from_base` to base `to_base`.
+Returns a string representation of the number `n`, converted from base `from_base` to base `to_base`.
 
-Returns NULL if any argument is NULL or `N` is a invalid number.
+Returns NULL if any argument is NULL or `n` is a invalid number.
 
-The argument `N` is interpreted as an integer, but may be specified as an integer or a string.
+The argument `n` is interpreted as an integer, but may be specified as an integer or a string.
 
 The minimum base is 2 and the maximum base is 36.
 
@@ -444,13 +443,13 @@ The minimum base is 2 and the maximum base is 36.
 
 > prototype: cos(`x`)
 
-Returns the cosine of `X`, where `X` is given in radians. Returns NULL if `X` is NULL.
+Returns the cosine of `x`, where `x` is given in radians. Returns NULL if `x` is NULL.
 
 ### cot
 
 > prototype: cot(`x`)
 
-Returns the cotangent of `X`. Returns NULL if `X` is NULL.
+Returns the cotangent of `x`. Returns NULL if `x` is NULL.
 
 ### count
 
@@ -462,7 +461,7 @@ Returns a count of the number of non-NULL values of `expr` in the rows.
 
 > prototype: curdate()
 
-Returns the current date as a value in 'YYYY-MM-DD' format.
+Returns the current date as a value in 'YYYY-mm-dd' format.
 
 ### current_date
 
@@ -486,7 +485,7 @@ CURRENT_TIMESTAMP() is a synonym for [NOW()](#now).
 
 > curtime()
 
-Returns the current time as a value in 'hh:mm:ss' format.
+Returns the current time as a value in 'HH:MM:SS' format.
 
 ### date
 
@@ -507,6 +506,7 @@ Only the date parts of the values are used in the calculation.
 
 > prototype: date_add(`date`, `interval`, `[unit]`)
 
+Adds an interval to a date.
 The `date` argument specifies the starting date or datetime value,
 and the `interval` argument specifies the interval value to be added
 to the starting date, the `unit` argument specifies the units of the interval value.
@@ -516,7 +516,7 @@ Available units are:
 - 1: second
 - 2: minute
 - 3: hour
-- 4: day, default
+- 4: day, **default**
 - 5: week
 
 Returns NULL if either `date` or `interval` is NULL.
@@ -545,7 +545,7 @@ DAY() is a synonym for [DAYOFMONTH()](#dayofmonth).
 > prototype: dayname(`date`)
 
 Returns the name of the weekday for `date`. The language used for the name is
-controlled by the value of the lc_time_names system variable.
+controlled by the value of the `lc_time_names` system variable.
 Returns NULL if `date` is NULL.
 
 ### dayofmonth
@@ -583,21 +583,22 @@ If `default` is omitted, returns NULL.
 
 > prototype: degrees(`x`)
 
-Returns the argument `X`, converted from radians to degrees. Returns NULL if `X` is NULL.
+Returns the argument `x`, converted from radians to degrees. Returns NULL if `x` is NULL.
 
 ### double
 
 > prototype: double(`x`)
 
-Cast `X` to double. Returns 0 if not a valid number.
+Cast `x` to double. Returns 0 if not a valid number.
 
 ### elt
 
-> prototype: elt(`N`, `str1`, `str2`, ...)
+> prototype: elt(`n`, `str1`, `str2`, ...)
 
-ELT() returns the `N`th element of the list of strings:
-`str1` if `N` = 1, `str2` if `N` = 2, and so on.
-Returns NULL if `N` is less than 1, greater than the number of arguments, or NULL.
+Returns the `n`th element of the list of strings:
+
+`str1` if `n` = 1, `str2` if `n` = 2, and so on.
+Returns NULL if `n` is less than 1, greater than the number of arguments, or NULL.
 
 ELT() is the complement of [FIELD()](#field).
 
@@ -605,19 +606,20 @@ ELT() is the complement of [FIELD()](#field).
 
 > prototype: exp(`x`)
 
-Returns the value of e (the base of natural logarithms) raised to the power of `X`.
+Returns the value of e (the base of natural logarithms) raised to the power of `x`.
 
-The inverse of this function is `LOG()` (using a single argument only) or `LN()`.
+The inverse of this function is [LOG()](#log) (using a single argument only) or [LN()](#ln).
 
-If `X` is NULL, this function returns NULL.
+If `x` is NULL, this function returns NULL.
 
 ### export
 
 > prototype: export(`table_name`, `file_path`, `[with_title]`, `[with_line_no]`, `[delimiter]`)
 
 Exports a table to a CSV file.
-The `table_name` is the name of the table to export.
-The `file_path` is the path to the file to export to.
+
+The `table_name` specifies the name of the table to export.
+The `file_path` specifies the path to the file to export to.
 The `with_title` parameter determines whether the first row of the file contains column names,
 defaults to false.
 The `with_line_no` parameter determines whether the first column of the file contains line numbers,
@@ -637,7 +639,7 @@ FIELD() is the complement of [ELT()](#elt).
 
 > prototype: floor(`x`)
 
-Returns the largest integer value not greater than `X`. Returns NULL if `X` is NULL.
+Returns the largest integer value not greater than `x`. Returns NULL if `x` is NULL.
 
 ### from_base64
 
@@ -654,7 +656,7 @@ The result is NULL if the argument is NULL or not a valid base-64 string.
 
 Returns a representation of unix_timestamp as a character string value
 with the format given by the `format` argument.
-If `format` is omitted, the default format is '%F %T'.
+If `format` is omitted, the default format is `%F %T`.
 
 ### get
 
@@ -670,7 +672,7 @@ or empty string if the variable does not exist.
 > prototype: greatest(`x1`, `x2`, ...)
 
 With two or more arguments, returns the largest (maximum-valued) argument.
-The arguments are compared using the same rules as for `LEAST()`.
+The arguments are compared using the same rules as for [LEAST()](#least).
 
 - If any argument is NULL, the result is NULL.
 - If any argument is a string, the result is a string.
@@ -684,7 +686,7 @@ Returns NULL if any argument is NULL.
 > prototype: group_concat(`expr`)
 
 Returns a string result with the concatenated non-NULL values from a group.
-It returns NULL if there are no non-NULL values.
+It returns NULL if any argument is NULL.
 
 ### hex
 
@@ -710,16 +712,16 @@ Returns `true_value` if `condition` is true, otherwise returns `false_value`.
 > prototype: ifnull(`expr1`, `expr2`)
 
 Returns `expr2` if `expr1` is NULL, otherwise returns `expr1`.
-This is the same as the `COALESCE()` function with two arguments.
+This is the same as the [COALESCE()](#coalesce) function with two arguments.
 
 ### import
 
 > prototype: import(`table_name`, `file_path`, `[with_title]`, `[columns]`, `[delimiter]`)
 
-Imports data from a file into a table.
-The file is expected to be in CSV format.
-The `table_name` is the name of the table to import the data into.
-The `file_path` is the path to the file to import.
+Imports data from a file into a table. The file is expected to be in CSV format.
+
+The `table_name` specifies the name of the table to import the data into.
+The `file_path` specifies the path to the file to import.
 The `with_title` parameter determines whether the first row of the file contains column names,
 defaults to false.
 The `columns` parameter determines the column count of the file,
@@ -750,13 +752,13 @@ except that the order of the arguments is reversed.
 
 > prototype: isnull(`expr`)
 
-If `expr` is NULL, ISNULL() returns `true`, otherwise it returns `false`.
+If `expr` is NULL, Returns `true`, otherwise it returns `false`.
 
 ### int
 
 > prototype: int(`x`)
 
-Cast `X` to integer. Returns 0 if not a valid number.
+Cast `x` to integer. Returns 0 if not a valid number.
 
 ### last_day
 
@@ -776,7 +778,7 @@ LCASE() is a synonym for [LOWER()](#lower).
 > prototype: least(`x1`, `x2`, ...)
 
 With two or more arguments, returns the smallest (minimum-valued) argument.
-The arguments are compared using the same rules as for `GREATEST()`.
+The arguments are compared using the same rules as for [GREATEST()](#greatest).
 
 ### left
 
@@ -795,14 +797,14 @@ Returns the length of the string str. Returns NULL if str is NULL.
 
 > prototype: ln(`x`)
 
-Returns the natural logarithm of `X`; that is, the base-e logarithm of `X`.
+Returns the natural logarithm of `x`; that is, the base-e logarithm of `x`.
 
-If `X` is less than or equal to 0, returns NULL.
-Returns NULL if `X` is NULL.
+If `x` is less than or equal to 0, returns NULL.
+Returns NULL if `x` is NULL.
 
-This function is synonymous with LOG(`X`).
+This function is synonymous with one-argument form of [LOG()](#log).
 
-The inverse of this function is `EXP()`.
+The inverse of this function is [EXP()](#exp).
 
 ### localtime
 
@@ -829,35 +831,35 @@ Returns 0 if `substr` is not in `str`. Returns NULL if any argument is NULL.
 
 > prototype: log(`[b]`, `x`)
 
-If called with one parameter, this function returns the natural logarithm of `X`.
-If `X` is less than or equal to 0, returns NULL.
-Returns NULL if `X` or `B` is NULL.
+If called with one parameter, this function returns the natural logarithm of `x`.
+If `x` is less than or equal to 0, returns NULL.
+Returns NULL if `x` or `b` is NULL.
 
-The inverse of this function (when called with a single argument) is the `EXP()`.
+The inverse of this function (when called with a single argument) is the [EXP()](#exp).
 
-If called with two parameters, this function returns the logarithm of `X` to the base `B`.
+If called with two parameters, this function returns the logarithm of `x` to the base `b`.
 
-If `X` is less than or equal to 0, or if `B` is less than or equal to 1, then NULL is returned.
+If `x` is less than or equal to 0, or if `b` is less than or equal to 1, then NULL is returned.
 
-`LOG`(`B`, `X`) is equivalent to `LOG`(`X`) / `LOG`(`B`).
+`LOG(b, x)` is equivalent to `LOG(x)/LOG(b)`.
 
 ### log2
 
 > prototype: log2(`x`)
 
-Returns the base-2 logarithm of `X`. If `X` is less than or equal to 0, returns NULL.
-Returns NULL if `X` is NULL.
+Returns the base-2 logarithm of `x`. If `x` is less than or equal to 0, returns NULL.
+Returns NULL if `x` is NULL.
 
-This function is equivalent to the expression `LOG`(`X`) / `LOG`(2).
+This function is equivalent to the expression `LOG(x)/LOG(2)`.
 
 ### log10
 
 > prototype: log10(`x`)
 
-Returns the base-10 logarithm of `X`. If `X` is less than or equal to 0, returns NULL.
-Returns NULL if `X` is NULL.
+Returns the base-10 logarithm of `x`. If `x` is less than or equal to 0, returns NULL.
+Returns NULL if `x` is NULL.
 
-`LOG10`(`X`) is equivalent to `LOG`(10, `X`).
+This function is equivalent to `LOG(10, x)`.
 
 ### lower
 
@@ -872,7 +874,7 @@ Returns the string `str` with all characters changed to lowercase, or NULL if `s
 Returns the string `str`, left-padded with the string `padstr` to a length of `len` characters.
 If `str` is longer than `len`, the return value is shortened to `len` characters.
 
-Returns NULL if any of its arguments are NULL.
+Returns NULL if any argument is NULL.
 
 ### ltrim
 
@@ -885,7 +887,7 @@ Returns NULL if `str` is NULL.
 
 > prototype: makedate(`year`, `dayofyear`)
 
-Returns a date, given year and day-of-year values.
+Returns a date, given `year` and `dayofyear` values.
 `dayofyear` must be greater than 0 or the result is NULL.
 The result is also NULL if either argument is NULL.
 
@@ -894,7 +896,7 @@ The result is also NULL if either argument is NULL.
 > prototype: maketime(`hour`, `minute`, `second`)
 
 Returns a time value calculated from the `hour`, `minute`, and `second` arguments.
-Returns NULL if any of its arguments are NULL.
+Returns NULL if any argument is NULL.
 
 ### max
 
@@ -907,7 +909,7 @@ MAX() may take a string argument; in such cases, it returns the maximum string v
 
 > prototype: md5(`str`)
 
-Calculates an MD5 128-bit checksum for the string.
+Calculates an MD5 128-bit checksum for the `str`.
 The value is returned as a string of 32 hexadecimal digits,
 or NULL if the argument was NULL.
 
@@ -934,44 +936,44 @@ Returns the minute for `time`, in the range 0 to 59, or NULL if time is NULL.
 
 > prototype: mod(`n`, `m`)
 
-Modulo operation. Returns the remainder of `N` divided by `M`. Returns NULL if `M` or `N` is NULL.
+Modulo operation. Returns the remainder of `n` divided by `m`. Returns NULL if `m` or `n` is NULL.
 
-`MOD`(`N`, 0) returns NULL.
+`MOD(n, 0)` returns NULL.
 
 ### month
 
 > prototype: month(`date`)
 
 Returns the month for `date`, in the range 1 to 12 for January to December.
-Returns NULL if date is NULL.
+Returns NULL if `date` is NULL.
 
 ### monthname
 
 > prototype: monthname(`date`)
 
 Returns the full name of the month for `date`. The language used for the name is
-controlled by the value of the lc_time_names system variable.
+controlled by the value of the `lc_time_names` system variable.
 Returns NULL if `date` is NULL.
 
 ### now
 
 > prototype: now()
 
-Returns the current date and time as a value in 'YYYY-MM-DD hh:mm:ss' format.
+Returns the current date and time as a value in 'YYYY-mm-dd HH:MM:SS' format.
 
 ### nullif
 
 > prototype: nullif(`expr1`, `expr2`)
 
 Returns NULL if `expr1` equals `expr2`; otherwise returns `expr1`.
-This is the same as IF(`expr1` = `expr2`, NULL, `expr1`).
+This is the same as `IF(expr1 = expr2, NULL, expr1)`.
 
 ### oct
 
-> prototype: oct(`N`)
+> prototype: oct(`n`)
 
-Returns a string representation of the octal value of `N`.
-This is equivalent to `CONV(N, 10, 8)`. Returns NULL if `N` is NULL.
+Returns a string representation of the octal value of `n`.
+This is equivalent to `CONV(N, 10, 8)`. Returns NULL if `n` is NULL.
 
 ### pi
 
@@ -989,7 +991,7 @@ This is the same as the two-argument form of [LOCATE()](#locate)
 
 > prototype: pow(`x`, `y`)
 
-Returns the value of `X` raised to the power of `Y`. Returns NULL if `X` or `Y` is NULL.
+Returns the value of `x` raised to the power of `y`. Returns NULL if `x` or `y` is NULL.
 
 ### power
 
@@ -1008,9 +1010,9 @@ in the range 1 to 4, or NULL if `date` is NULL.
 
 > prototype: radians(`x`)
 
-Returns the argument `X`, converted from degrees to radians. (Note that `π` radians equals 180 degrees.)
+Returns the argument `x`, converted from degrees to radians. (Note that `π` radians equals 180 degrees.)
 
-Returns NULL if `X` is NULL.
+Returns NULL if `x` is NULL.
 
 ### rand
 
@@ -1018,8 +1020,8 @@ Returns NULL if `X` is NULL.
 
 Returns a random floating-point value `v` in the range 0 <= `v` < 1.0.
 
-If an integer argument `N` is specified, it is used as the seed value.
-For equal argument values, `RAND`(`N`) returns the same value each time.
+If an integer argument `n` is specified, it is used as the seed value.
+For equal argument values, `RAND`(`n`) returns the same value each time.
 
 ### repeat
 
@@ -1035,9 +1037,9 @@ Returns NULL if `str` or `count` is NULL.
 
 Returns the string `str` with
 all occurrences of the string `from` replaced by the string `to`.
-This function is case sensitive.
+This function is case-insensitive.
 
-Returns NULL if any of its arguments are NULL.
+Returns NULL if any argument is NULL.
 
 ### reverse
 
@@ -1057,11 +1059,11 @@ or NULL if any argument is NULL.
 
 > prototype: round(`x`, `[d]`)
 
-Rounds the argument `X` to `D` decimal places.
-`D` defaults to 0 if not specified.
-`D` can be negative to cause `D` digits left of the decimal point of the value `X` to become zero.
+Rounds the argument `x` to `d` decimal places.
+`d` defaults to 0 if not specified.
+`d` can be negative to cause `d` digits left of the decimal point of the value `x` to become zero.
 
-If `X` or `D` is NULL, returns NULL.
+If `x` or `d` is NULL, returns NULL.
 
 ### rpad
 
@@ -1070,7 +1072,7 @@ If `X` or `D` is NULL, returns NULL.
 Returns the string `str`, right-padded with the string `padstr` to a length of `len` characters.
 If `str` is longer than `len`, the return value is shortened to `len` characters.
 
-Returns NULL if any of its arguments are NULL.
+Returns NULL if any argument is NULL.
 
 ### rtrim
 
@@ -1097,7 +1099,7 @@ Returns NULL if `seconds` is NULL.
 > prototype: serial([`n`])
 
 Returns a random serial number.
-If an integer argument `N` is specified, it is used as the length of the serial number,
+If an integer argument `n` is specified, it is used as the length of the serial number,
 Otherwise, the length is 8.
 
 ### set
@@ -1110,7 +1112,7 @@ Set or update (if exists) the environment variable `key` to `value`.
 
 > prototype: sha(`str`)
 
-sha() is synonymous with [SHA1()](#sha1).
+SHA() is synonymous with [SHA1()](#sha1).
 
 ### sha1
 
@@ -1162,14 +1164,14 @@ This function is the same as [SHA2()](#sha2) with a hash length of 512 bits.
 
 > prototype: sign(`x`)
 
-Returns the sign of the argument as -1, 0, or 1, depending on whether `X` is negative, zero, or positive.
-Returns NULL if `X` is NULL.
+Returns the sign of the argument as -1, 0, or 1, depending on whether `x` is negative, zero, or positive.
+Returns NULL if `x` is NULL.
 
 ### sin
 
 > prototype: sin(`x`)
 
-Returns the sine of `X`, where `X` is given in radians. Returns NULL if `X` is NULL.
+Returns the sine of `x`, where `x` is given in radians. Returns NULL if `x` is NULL.
 
 ### sleep
 
@@ -1184,13 +1186,13 @@ execute multiple times if there are multiple lines.
 
 > prototype: space(`n`)
 
-Returns a string consisting of `N` space characters, or NULL if `N` is NULL.
+Returns a string consisting of `n` space characters, or NULL if `n` is NULL.
 
 ### sqrt
 
 > prototype: sqrt(`x`)
 
-Returns the square root of a non-negative number `X`. If `X` is NULL, the function returns NULL.
+Returns the square root of a non-negative number `x`. If `x` is NULL, the function returns NULL.
 
 ### strcmp
 
@@ -1205,7 +1207,7 @@ Returns NULL if either argument is NULL.
 
 > prototype: string(`x`)
 
-Cast `X` to string.
+Cast `x` to string.
 
 ### str_to_date
 
@@ -1237,7 +1239,7 @@ In this case, the beginning of the substring is
 pos characters from the end of the string, rather than the beginning.
 A value of 0 for `pos` returns an empty string.
 
-It returns NULL if any of its arguments are NULL.
+It returns NULL if any argument is NULL.
 If `len` is less than 1, the result is the empty string.
 
 ### substring_index
@@ -1248,7 +1250,7 @@ Returns the substring from string `str` before count occurrences of the delimite
 If `count` is positive, everything to the left of the final delimiter (counting from the left) is returned.
 If `count` is negative, everything to the right of the final delimiter (counting from the right) is returned.
 
-Returns NULL if any of its arguments are NULL.
+Returns NULL if any argument is NULL.
 
 ### subtime
 
@@ -1272,7 +1274,7 @@ It's a synonym for [NOW()](#now).
 
 > prototype: tan(`x`)
 
-Returns the tangent of `X`, where `X` is given in radians. Returns NULL if `X` is NULL.
+Returns the tangent of `x`, where `x` is given in radians. Returns NULL if `x` is NULL.
 
 ### time
 
@@ -1283,14 +1285,14 @@ returns it as a string. Returns NULL if `expr` is NULL.
 
 ### timediff
 
-> prototype: timediff(`time1`, ``)
+> prototype: timediff(`time1`, `time2`)
 
-Returns time1 − time2 expressed as a time value.
+Returns `time1` − `time2` expressed as a time value.
 Returns NULL if either argument is NULL.
 
-### time_tosec
+### time_to_sec
 
-> prototype: time_tosec(`time`)
+> prototype: time_to_sec(`time`)
 
 Returns the `time` argument, converted to seconds.
 Returns NULL if time is NULL.
@@ -1305,24 +1307,25 @@ If the argument is not a string, it is converted to a string
 before conversion takes place.
 
 The result is NULL if the argument is NULL.
+
 Base-64 encoded strings can be decoded using the [FROM_BASE64()](#from_base64) function.
 
 ### trim
 
 > prototype: trim(`str`)
 
-Returns the string `str` with all leading or trailing space characters removed.
+Returns the string `str` with all leading and trailing space characters removed.
 Returns NULL if `str` is NULL.
 
 ### truncate
 
 > prototype: truncate(`x`, `[d]`)
 
-Returns the number `X`, truncated to `D` decimal places.
-If `D` is 0, the result has no decimal point or fractional part.
-`D` can be negative to cause `D` digits left of the decimal point of the value `X` to become zero.
+Returns the number `x`, truncated to `d` decimal places.
+If `d` is 0, the result has no decimal point or fractional part.
+`d` can be negative to cause `d` digits left of the decimal point of the value `x` to become zero.
 
-If `X` or `D` is NULL, returns NULL.
+If `x` or `d` is NULL, returns NULL.
 
 ## ucase
 
@@ -1338,10 +1341,9 @@ Returns a string containing the character representation of the hexadecimal argu
 
 The characters in the argument string must be legal hexadecimal digits.
 If the argument contains any non-hexadecimal digits,
-or is itself NULL, the result is NULL:
+or is itself NULL, the result is NULL.
 
 It's the opposite of the [HEX()](#hex) function.
-This is different from the function of the same name in MySQL.
 
 ### unix_timestamp
 
@@ -1405,7 +1407,7 @@ Returns NULL if date is NULL.
 Returns the calendar week of the `date` as a number in the range from 1 to 53.
 Returns NULL if `date` is NULL.
 
-This function is equivalent to WEEK(date, 1, 3).
+This function is equivalent to `WEEK(date, 1, 3)`.
 
 ### year
 

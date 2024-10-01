@@ -53,11 +53,19 @@ static void show_version() {
  * Show help message.
  */
 static void show_help() {
-    cout << "Using SQL-like languages to process lightweight data in bash.\n"
+    show_version();
+    cout << APP_DESC "\n"
             "\n"
             "Usage: sql [OPTION] [QUERIES]\n"
-            "\n"
-            "For more information, please see the README documentation.\n" << endl;
+            "-h, --help: Display this help and exit.\n"
+            "-v, --version: Output version information and exit.\n"
+            "-t, --title: First row is table title.\n"
+            "-l, --line-no: Print line number.\n"
+            "-i, --interactive: Interactive mode.\n"
+            "-f, --file=FILE: Read data from FILE.\n"
+            "-d, --delimiter=DELIMITER: Use DELIMITER as field delimiter.\n"
+            "-c, --columns=COLUMNS: Use COLUMNS as number of columns.\n"
+         << endl;
 }
 
 /**
@@ -170,8 +178,6 @@ ProgramOptions *parse_cmd_options(int argc, char *argv[]) {
 
     // print help info
     if (help) {
-        show_version();
-
         show_help();
 
         exit(0);
@@ -349,15 +355,16 @@ void import_data(const String &table) {
         }
     }
 
-    db->insert({table, {schema, res}});
+    db->insert({to_lower(table), {schema, res}});
 }
 
 void export_data(const String &table, const String &file, bool with_title, bool with_line_no, char deli) {
-    if (!db->count(table)) {
-        show_error("Table not found: " + table);
+    val table_name = to_lower(table);
+    if (!db->count(table_name)) {
+        show_error("Table not found: " + table_name);
     }
 
-    val tbl = db->at(table);
+    val tbl = db->at(table_name);
     val schema = tbl.first;
     val res = tbl.second;
     val columns = res->at(0)->size();

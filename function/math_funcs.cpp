@@ -24,7 +24,7 @@ math1(Row *row, const String &name, double(*func)(double), DataType type = D_NON
         return new Cell();
     }
 
-    if (type != D_NONE) {
+    if (type == D_NONE) {
         type = D_REAL;
     }
     return new Cell(type, func(cell->number));
